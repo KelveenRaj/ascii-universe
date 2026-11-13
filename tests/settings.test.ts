@@ -6,7 +6,7 @@ import {
   NUMERIC_RANGES,
   sanitizeSettings,
   stepsFor,
-} from '../src/state/settings';
+} from '@/state/settings';
 
 describe('settings validation', () => {
   it('ignores garbage', () => {

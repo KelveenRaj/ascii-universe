@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import crtFrag from '../../shaders/crt.frag';
-import type { CrtStrengths } from '../../state/settings';
-import { FullscreenPass } from '../FullscreenPass';
+import crtFrag from '@/shaders/crt.frag';
+import type { CrtStrengths } from '@/state/settings';
+import { FullscreenPass } from '@/renderer/FullscreenPass';
 
 type U<T> = THREE.IUniform<T>;
 

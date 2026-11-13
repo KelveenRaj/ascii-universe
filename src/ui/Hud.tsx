@@ -1,9 +1,12 @@
 import { useStore } from 'zustand';
-import { PALETTES } from '../renderer/palette/palettes';
-import { settingsStore } from '../state/settings';
-import { statsStore } from '../state/stats';
-import { uiStore } from '../state/ui';
-import { PixelButton } from './controls';
+import { PALETTES } from '@/renderer/palette/palettes';
+import { settingsStore } from '@/state/settings';
+import { statsStore } from '@/state/stats';
+import { uiStore } from '@/state/ui';
+import commonStyles from '@/ui/common.module.css';
+import { PixelButton } from '@/ui/controls';
+import { cx } from '@/ui/cx';
+import styles from '@/ui/Hud.module.css';
 
 /** Game-style readout in the top-left corner. Re-renders ~4×/s at most (stats are throttled). */
 export function Hud() {
@@ -36,17 +39,19 @@ export function Hud() {
   ].filter(Boolean);
 
   return (
-    <aside className="hud frame" aria-label="Status">
-      <div className="hud-title">ASCII UNIVERSE</div>
-      <dl className="hud-grid">
+    <aside className={cx(commonStyles.frame, styles.hud)} aria-label="Status">
+      <div className={styles.title}>ASCII UNIVERSE</div>
+      <dl className={styles.grid}>
         {rowsData.map(([k, v]) => (
-          <div key={k} className="hud-row">
+          <div key={k} className={styles.row}>
             <dt>{k}</dt>
             <dd>{v}</dd>
           </div>
         ))}
       </dl>
-      {flags.length > 0 && <div className="hud-flags">{flags.join(' · ')}</div>}
+      {flags.length > 0 && (
+        <div className={cx(styles.flags, commonStyles.blink)}>{flags.join(' · ')}</div>
+      )}
     </aside>
   );
 }
@@ -57,7 +62,7 @@ export function TopBar() {
   const helpOpen = useStore(uiStore, (s) => s.helpOpen);
   const { setPanelOpen, setHelpOpen } = uiStore.getState();
   return (
-    <div className="topbar" data-ui>
+    <div className={styles.topbar} data-ui>
       <PixelButton
         onClick={() => setHelpOpen(!helpOpen)}
         title="Controls (?)"
@@ -71,8 +76,8 @@ export function TopBar() {
         aria-expanded={panelOpen}
         aria-controls="settings-panel"
       >
-        <span className="icon-menu" aria-hidden="true" />
-        <span className="topbar-label"> SETTINGS</span>
+        <span className={styles.iconMenu} aria-hidden="true" />
+        <span className={styles.topbarLabel}> SETTINGS</span>
       </PixelButton>
     </div>
   );
@@ -80,7 +85,7 @@ export function TopBar() {
 
 export function KeyHint() {
   return (
-    <div className="key-hint" aria-hidden="true">
+    <div className={styles.keyHint} aria-hidden="true">
       TAB SETTINGS · ? HELP · C COPY TEXT · H HUD · DRAG ORBIT · WHEEL ZOOM
     </div>
   );

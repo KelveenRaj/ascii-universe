@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { onCommand } from '../state/commands';
-import { AUTO_START_TIER, MAX_PIXEL_RATIO } from '../state/deviceTier';
+import { onCommand } from '@/state/commands';
+import { AUTO_START_TIER, MAX_PIXEL_RATIO } from '@/state/deviceTier';
 import {
   anyCrtEffect,
   crtStrengths,
@@ -9,28 +9,32 @@ import {
   type DebugView,
   stepsFor,
   type SettingsState,
-} from '../state/settings';
-import { statsStore } from '../state/stats';
-import { uiStore } from '../state/ui';
-import { CameraController, VIEW_PRESETS, type ViewPreset } from './camera/CameraController';
-import { InputManager, isTypingTarget } from './camera/InputManager';
+} from '@/state/settings';
+import { statsStore } from '@/state/stats';
+import { uiStore } from '@/state/ui';
+import {
+  CameraController,
+  VIEW_PRESETS,
+  type ViewPreset,
+} from '@/renderer/camera/CameraController';
+import { InputManager, isTypingTarget } from '@/renderer/camera/InputManager';
 import {
   buildGlyphAtlas,
   GlyphRasterizer,
   loadPixelFont,
   type GlyphAtlas,
-} from './glyphs/GlyphAtlas';
-import { RAMP_IDS, RAMPS, type RampId } from './glyphs/ramps';
-import { autoGlyphScale, computeGrid, MAX_GLYPH_SCALE, type CharGrid } from './grid';
-import { createLutTexture, hexToRgb, updateLutTexture } from './palette/lut';
-import { PALETTE_IDS, PALETTES, type PaletteId } from './palette/palettes';
-import { AsciiPass, type PaletteColors } from './passes/AsciiPass';
-import { BloomPass } from './passes/BloomPass';
-import { CrtPass } from './passes/CrtPass';
-import { PresentPass } from './passes/PresentPass';
-import { ReadbackPass } from './passes/ReadbackPass';
-import { ScenePass } from './passes/ScenePass';
-import { QualityGovernor } from './QualityGovernor';
+} from '@/renderer/glyphs/GlyphAtlas';
+import { RAMP_IDS, RAMPS, type RampId } from '@/renderer/glyphs/ramps';
+import { autoGlyphScale, computeGrid, MAX_GLYPH_SCALE, type CharGrid } from '@/renderer/grid';
+import { createLutTexture, hexToRgb, updateLutTexture } from '@/renderer/palette/lut';
+import { PALETTE_IDS, PALETTES, type PaletteId } from '@/renderer/palette/palettes';
+import { AsciiPass, type PaletteColors } from '@/renderer/passes/AsciiPass';
+import { BloomPass } from '@/renderer/passes/BloomPass';
+import { CrtPass } from '@/renderer/passes/CrtPass';
+import { PresentPass } from '@/renderer/passes/PresentPass';
+import { ReadbackPass } from '@/renderer/passes/ReadbackPass';
+import { ScenePass } from '@/renderer/passes/ScenePass';
+import { QualityGovernor } from '@/renderer/QualityGovernor';
 
 const FOV_DEG = 50;
 /** Smooth (non-ASCII) mode renders at a fraction of the screen and upscales. */

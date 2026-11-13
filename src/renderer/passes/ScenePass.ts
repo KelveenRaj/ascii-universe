@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import blackholeFrag from '../../shaders/blackhole.frag';
-import type { Settings } from '../../state/settings';
-import { FullscreenPass } from '../FullscreenPass';
+import blackholeFrag from '@/shaders/blackhole.frag';
+import type { Settings } from '@/state/settings';
+import { FullscreenPass } from '@/renderer/FullscreenPass';
 
 type U<T> = THREE.IUniform<T>;
 

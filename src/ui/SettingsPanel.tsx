@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useStore } from 'zustand';
-import { RAMP_IDS, RAMPS } from '../renderer/glyphs/ramps';
-import { PALETTE_IDS, PALETTES } from '../renderer/palette/palettes';
-import { sendCommand } from '../state/commands';
+import { RAMP_IDS, RAMPS } from '@/renderer/glyphs/ramps';
+import { PALETTE_IDS, PALETTES } from '@/renderer/palette/palettes';
+import { sendCommand } from '@/state/commands';
 import {
   NUMERIC_RANGES,
   QUALITY_LEVELS,
@@ -10,10 +10,21 @@ import {
   settingsStore,
   type Quality,
   type Settings,
-} from '../state/settings';
-import { statsStore } from '../state/stats';
-import { uiStore } from '../state/ui';
-import { EffectRow, PixelButton, Section, Select, Slider, Toggle } from './controls';
+} from '@/state/settings';
+import { statsStore } from '@/state/stats';
+import { uiStore } from '@/state/ui';
+import commonStyles from '@/ui/common.module.css';
+import {
+  EffectRow,
+  PanelHeader,
+  PixelButton,
+  Section,
+  Select,
+  Slider,
+  Toggle,
+} from '@/ui/controls';
+import { cx } from '@/ui/cx';
+import styles from '@/ui/SettingsPanel.module.css';
 
 type SizeOption = 'auto' | '1' | '2' | '3' | '4' | 'custom';
 
@@ -130,21 +141,16 @@ export function SettingsPanel() {
     <aside
       id="settings-panel"
       ref={panelRef}
-      className={`panel frame${open ? ' is-open' : ''}`}
+      className={cx(commonStyles.frame, styles.panel, open && styles.open)}
       aria-label="Settings"
       aria-hidden={!open}
       inert={!open}
       tabIndex={-1}
       data-ui
     >
-      <header className="panel-header">
-        <h2>SETTINGS</h2>
-        <PixelButton onClick={() => uiStore.getState().setPanelOpen(false)} title="Close (Esc)">
-          X
-        </PixelButton>
-      </header>
+      <PanelHeader title="SETTINGS" onClose={() => uiStore.getState().setPanelOpen(false)} />
 
-      <div className="panel-body">
+      <div className={styles.body}>
         <Section title="DISPLAY">
           <Toggle label="ASCII MODE" checked={ascii} onChange={setAscii} />
           <Select label="GLYPH SIZE" value={size} options={SIZE_OPTIONS} onChange={onSize} />
@@ -180,7 +186,7 @@ export function SettingsPanel() {
           />
           <NumberSlider label="EXPOSURE" k="exposure" />
           <PixelButton
-            className="px-btn-wide"
+            wide
             onClick={() => {
               uiStore.getState().setPanelOpen(false);
               sendCommand({ type: 'captureText' });
@@ -224,7 +230,7 @@ export function SettingsPanel() {
         </Section>
 
         <Section title="CAMERA">
-          <div className="btn-row">
+          <div className={styles.buttonRow}>
             <PixelButton onClick={() => sendCommand({ type: 'preset', preset: 'interstellar' })}>
               EDGE-ON
             </PixelButton>
@@ -239,7 +245,7 @@ export function SettingsPanel() {
           <Toggle label="SHOW HUD" checked={hud} onChange={setHud} />
         </Section>
 
-        <PixelButton className="px-btn-wide" onClick={() => settingsStore.getState().reset()}>
+        <PixelButton wide onClick={() => settingsStore.getState().reset()}>
           RESET ALL SETTINGS
         </PixelButton>
       </div>

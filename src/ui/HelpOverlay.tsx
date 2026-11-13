@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react';
 import { useStore } from 'zustand';
-import { uiStore } from '../state/ui';
-import { PixelButton } from './controls';
+import { uiStore } from '@/state/ui';
+import { Section } from '@/ui/controls';
+import { Dialog } from '@/ui/Dialog';
+import styles from '@/ui/HelpOverlay.module.css';
 
 const GROUPS: Array<{ title: string; rows: Array<[string, string]> }> = [
   {
@@ -45,48 +46,28 @@ const GROUPS: Array<{ title: string; rows: Array<[string, string]> }> = [
 
 export function HelpOverlay() {
   const open = useStore(uiStore, (s) => s.helpOpen);
-  const dialogRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (open) dialogRef.current?.focus();
-  }, [open]);
-
   if (!open) return null;
-  const close = () => uiStore.getState().setHelpOpen(false);
 
   return (
-    <div className="help-backdrop" onClick={close} data-ui>
-      <div
-        ref={dialogRef}
-        className="help frame"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="help-title"
-        tabIndex={-1}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <header className="panel-header">
-          <h2 id="help-title">CONTROLS</h2>
-          <PixelButton onClick={close} title="Close (Esc)">
-            X
-          </PixelButton>
-        </header>
-        <div className="help-groups">
-          {GROUPS.map((g) => (
-            <section key={g.title}>
-              <h3>{g.title}</h3>
-              <dl>
-                {g.rows.map(([k, v]) => (
-                  <div key={k} className="help-row">
-                    <dt>{k}</dt>
-                    <dd>{v}</dd>
-                  </div>
-                ))}
-              </dl>
-            </section>
-          ))}
-        </div>
+    <Dialog
+      title="CONTROLS"
+      onClose={() => uiStore.getState().setHelpOpen(false)}
+      className={styles.help}
+    >
+      <div className={styles.groups}>
+        {GROUPS.map((g) => (
+          <Section key={g.title} title={g.title}>
+            <dl className={styles.list}>
+              {g.rows.map(([k, v]) => (
+                <div key={k} className={styles.row}>
+                  <dt>{k}</dt>
+                  <dd>{v}</dd>
+                </div>
+              ))}
+            </dl>
+          </Section>
+        ))}
       </div>
-    </div>
+    </Dialog>
   );
 }

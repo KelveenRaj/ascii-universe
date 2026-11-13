@@ -1,4 +1,6 @@
 import { useId, type ReactNode } from 'react';
+import styles from '@/ui/controls.module.css';
+import { cx } from '@/ui/cx';
 
 /** Retro-styled form controls. All are native inputs underneath, so they work with keyboard and AT. */
 
@@ -8,13 +10,13 @@ export function Toggle(props: {
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="ctl ctl-toggle">
+    <label className={cx(styles.control, styles.toggle)}>
       <input
         type="checkbox"
         checked={props.checked}
         onChange={(e) => props.onChange(e.target.checked)}
       />
-      <span className="ctl-label">{props.label}</span>
+      <span className={styles.label}>{props.label}</span>
     </label>
   );
 }
@@ -32,8 +34,8 @@ export function Slider(props: {
   const id = useId();
   const text = props.format ? props.format(props.value) : String(props.value);
   return (
-    <div className={`ctl ctl-slider${props.disabled ? ' is-disabled' : ''}`}>
-      <label htmlFor={id} className="ctl-label">
+    <div className={cx(styles.control, styles.slider, props.disabled && styles.disabled)}>
+      <label htmlFor={id} className={styles.label}>
         {props.label}
       </label>
       <input
@@ -46,7 +48,7 @@ export function Slider(props: {
         disabled={props.disabled}
         onChange={(e) => props.onChange(Number(e.target.value))}
       />
-      <output htmlFor={id} className="ctl-value">
+      <output htmlFor={id} className={styles.value}>
         {text}
       </output>
     </div>
@@ -68,15 +70,15 @@ export function EffectRow(props: {
   const id = useId();
   const off = props.disabled || !props.on;
   return (
-    <div className={`ctl ctl-effect${props.disabled ? ' is-disabled' : ''}`}>
-      <label className="ctl-toggle">
+    <div className={cx(styles.control, styles.effect, props.disabled && styles.disabled)}>
+      <label className={styles.toggle}>
         <input
           type="checkbox"
           checked={props.on}
           disabled={props.disabled}
           onChange={(e) => props.onToggle(e.target.checked)}
         />
-        <span className="ctl-label">{props.label}</span>
+        <span className={styles.label}>{props.label}</span>
       </label>
       <input
         id={id}
@@ -89,7 +91,7 @@ export function EffectRow(props: {
         disabled={off}
         onChange={(e) => props.onChange(Number(e.target.value))}
       />
-      <output htmlFor={id} className="ctl-value">
+      <output htmlFor={id} className={styles.value}>
         {Math.round((props.value / props.max) * 100)}%
       </output>
     </div>
@@ -104,11 +106,11 @@ export function Select<T extends string>(props: {
 }) {
   const id = useId();
   return (
-    <div className="ctl ctl-select">
-      <label htmlFor={id} className="ctl-label">
+    <div className={cx(styles.control, styles.select)}>
+      <label htmlFor={id} className={styles.label}>
         {props.label}
       </label>
-      <span className="ctl-select-wrap">
+      <span className={styles.selectWrap}>
         <select id={id} value={props.value} onChange={(e) => props.onChange(e.target.value as T)}>
           {props.options.map((o) => (
             <option key={o.value} value={o.value}>
@@ -125,22 +127,35 @@ export function PixelButton(props: {
   children: ReactNode;
   onClick: () => void;
   title?: string;
-  className?: string;
+  /** Full width of its container. */
+  wide?: boolean;
   'aria-expanded'?: boolean;
   'aria-controls'?: string;
 }) {
-  const { children, className, ...rest } = props;
+  const { children, wide, ...rest } = props;
   return (
-    <button type="button" className={`px-btn${className ? ` ${className}` : ''}`} {...rest}>
+    <button type="button" className={cx(styles.button, wide && styles.wide)} {...rest}>
       {children}
     </button>
   );
 }
 
+/** Title bar with a close button, shared by the settings panel and dialogs. */
+export function PanelHeader(props: { title: string; titleId?: string; onClose: () => void }) {
+  return (
+    <header className={styles.header}>
+      <h2 id={props.titleId}>{props.title}</h2>
+      <PixelButton onClick={props.onClose} title="Close (Esc)">
+        X
+      </PixelButton>
+    </header>
+  );
+}
+
 export function Section(props: { title: string; children: ReactNode }) {
   return (
-    <section className="panel-section">
-      <h3>{props.title}</h3>
+    <section>
+      <h3 className={styles.sectionTitle}>{props.title}</h3>
       {props.children}
     </section>
   );

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buildLut, hexToRgb, LUT_SIZE, luminance, type Rgb } from '../src/renderer/palette/lut';
-import { PALETTE_IDS, PALETTES } from '../src/renderer/palette/palettes';
+import { buildLut, hexToRgb, LUT_SIZE, luminance, type Rgb } from '@/renderer/palette/lut';
+import { PALETTE_IDS, PALETTES } from '@/renderer/palette/palettes';
 
 const texel = (lut: Uint8Array, i: number): Rgb => [
   lut[i * 4] / 255,

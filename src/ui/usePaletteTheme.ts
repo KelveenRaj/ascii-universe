@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import { useStore } from 'zustand';
-import { samplePalette, type Rgb } from '../renderer/palette/lut';
-import { PALETTES } from '../renderer/palette/palettes';
-import { settingsStore } from '../state/settings';
+import { samplePalette, type Rgb } from '@/renderer/palette/lut';
+import { PALETTES } from '@/renderer/palette/palettes';
+import { settingsStore } from '@/state/settings';
 
 const css = ([r, g, b]: Rgb, alpha = 1) =>
   `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${alpha})`;

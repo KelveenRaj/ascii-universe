@@ -1,8 +1,8 @@
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { createStore } from 'zustand/vanilla';
-import { RAMPS, type RampId } from '../renderer/glyphs/ramps';
-import { PALETTES, type PaletteId } from '../renderer/palette/palettes';
-import { deviceDefaults } from './deviceTier';
+import { RAMPS, type RampId } from '@/renderer/glyphs/ramps';
+import { PALETTES, type PaletteId } from '@/renderer/palette/palettes';
+import { deviceDefaults } from '@/state/deviceTier';
 
 /**
  * Render settings. React writes here (settings panel); the render loop reads

@@ -1,10 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import {
-  CAMERA_LIMITS,
-  CameraController,
-  VIEW_PRESETS,
-} from '../src/renderer/camera/CameraController';
+import { CAMERA_LIMITS, CameraController, VIEW_PRESETS } from '@/renderer/camera/CameraController';
 
 const TAN_HALF_FOV = Math.tan((50 * Math.PI) / 360);
 const DEG = Math.PI / 180;

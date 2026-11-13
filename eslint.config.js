@@ -25,6 +25,18 @@ export default defineConfig([
         'error',
         { argsIgnorePattern: '^_', ignoreRestSiblings: true },
       ],
+      // use absolute imports (@/… → src/…) instead of relative paths
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['./*', '../*'],
+              message: 'Use an absolute import from "@/…" (rooted at src/) instead.',
+            },
+          ],
+        },
+      ],
     },
   },
   eslintConfigPrettier,

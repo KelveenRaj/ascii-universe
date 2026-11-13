@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
-import { settingsStore } from '../state/settings';
-import { uiStore } from '../state/ui';
+import { settingsStore } from '@/state/settings';
+import { uiStore } from '@/state/ui';
 
 const isTextField = (t: EventTarget | null) =>
   t instanceof HTMLInputElement && t.type !== 'checkbox' && t.type !== 'range'

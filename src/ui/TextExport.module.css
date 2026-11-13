@@ -1,0 +1,38 @@
+.dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(1460px, 100%);
+}
+
+.preview {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  margin: 12px;
+  padding: 8px;
+  background: #000;
+  border: 2px solid var(--ink-dim);
+}
+
+.preview pre {
+  width: max-content;
+  margin: 0 auto;
+  font-family: ui-monospace, Consolas, 'Cascadia Mono', Menlo, monospace;
+  line-height: 1;
+  color: var(--ink);
+  text-shadow: none;
+  user-select: text;
+  -webkit-font-smoothing: auto;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px 12px;
+}
+
+.info {
+  margin-right: auto;
+  color: var(--accent);
+}

@@ -7,8 +7,8 @@ import {
   GLYPH_SIZE,
   inkBox,
   PROCEDURAL_GLYPHS,
-} from '../src/renderer/glyphs/bitmaps';
-import { RAMP_IDS, RAMPS, sortByCoverage, uniqueChars } from '../src/renderer/glyphs/ramps';
+} from '@/renderer/glyphs/bitmaps';
+import { RAMP_IDS, RAMPS, sortByCoverage, uniqueChars } from '@/renderer/glyphs/ramps';
 
 describe('ramps', () => {
   for (const id of RAMP_IDS) {

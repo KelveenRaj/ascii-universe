@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from 'zustand';
-import { uiStore } from '../state/ui';
-import { PixelButton } from './controls';
+import { uiStore } from '@/state/ui';
+import { PixelButton } from '@/ui/controls';
+import { Dialog } from '@/ui/Dialog';
+import styles from '@/ui/TextExport.module.css';
 
 /** Monospace glyphs are about 0.6em wide; used to fit the preview to the dialog width. */
 const MONO_ASPECT = 0.6;
@@ -38,19 +40,17 @@ function download(text: string, cols: number, rows: number): void {
 /** Dialog showing the captured frame as text, with copy and download. Opened with C. */
 export function TextExport() {
   const text = useStore(uiStore, (s) => s.textExport);
-  const dialogRef = useRef<HTMLDivElement>(null);
   const preRef = useRef<HTMLPreElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
-  const [viewport, setViewport] = useState(() => ({ w: window.innerWidth }));
+  const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
 
   useEffect(() => {
     if (text === null) return;
-    dialogRef.current?.focus();
     // text is taller than the screen grid; start the preview on the middle, where the hole is
     const preview = previewRef.current;
     if (preview) preview.scrollTop = (preview.scrollHeight - preview.clientHeight) / 2;
-    const onResize = () => setViewport({ w: window.innerWidth });
+    const onResize = () => setViewportWidth(window.innerWidth);
     window.addEventListener('resize', onResize);
     return () => {
       window.removeEventListener('resize', onResize);
@@ -63,48 +63,35 @@ export function TextExport() {
   const cols = Math.max(1, ...lines.map((l) => l.length));
   const rows = lines.length;
   // fit the width (glyphs are ~0.6em wide); text is taller than the screen grid, so it scrolls
-  const fitWidth = (Math.min(viewport.w, 1460) - DIALOG_SIDE_PX) / (cols * MONO_ASPECT);
+  const fitWidth = (Math.min(viewportWidth, 1460) - DIALOG_SIDE_PX) / (cols * MONO_ASPECT);
   const fontSize = Math.max(3, Math.min(12, fitWidth));
-  const close = () => uiStore.getState().setTextExport(null);
 
   return (
-    <div className="help-backdrop" onClick={close} data-ui>
-      <div
-        ref={dialogRef}
-        className="text-export frame"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="text-export-title"
-        tabIndex={-1}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <header className="panel-header">
-          <h2 id="text-export-title">COPY AS TEXT</h2>
-          <PixelButton onClick={close} title="Close (Esc)">
-            X
-          </PixelButton>
-        </header>
-        <div ref={previewRef} className="text-export-preview">
-          <pre ref={preRef} style={{ fontSize: `${fontSize}px` }}>
-            {text}
-          </pre>
-        </div>
-        <footer className="text-export-actions">
-          <span className="text-export-info">
-            {cols}×{rows} CHARS
-          </span>
-          <PixelButton
-            onClick={() =>
-              void copyToClipboard(text, preRef.current).then((ok) =>
-                setStatus(ok ? 'copied' : 'failed'),
-              )
-            }
-          >
-            {status === 'copied' ? 'COPIED!' : status === 'failed' ? 'COPY FAILED' : 'COPY'}
-          </PixelButton>
-          <PixelButton onClick={() => download(text, cols, rows)}>DOWNLOAD .TXT</PixelButton>
-        </footer>
+    <Dialog
+      title="COPY AS TEXT"
+      onClose={() => uiStore.getState().setTextExport(null)}
+      className={styles.dialog}
+    >
+      <div ref={previewRef} className={styles.preview}>
+        <pre ref={preRef} style={{ fontSize: `${fontSize}px` }}>
+          {text}
+        </pre>
       </div>
-    </div>
+      <footer className={styles.actions}>
+        <span className={styles.info}>
+          {cols}×{rows} CHARS
+        </span>
+        <PixelButton
+          onClick={() =>
+            void copyToClipboard(text, preRef.current).then((ok) =>
+              setStatus(ok ? 'copied' : 'failed'),
+            )
+          }
+        >
+          {status === 'copied' ? 'COPIED!' : status === 'failed' ? 'COPY FAILED' : 'COPY'}
+        </PixelButton>
+        <PixelButton onClick={() => download(text, cols, rows)}>DOWNLOAD .TXT</PixelButton>
+      </footer>
+    </Dialog>
   );
 }

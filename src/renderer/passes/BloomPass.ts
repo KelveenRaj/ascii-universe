@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import blurFrag from '../../shaders/blur.frag';
-import { FullscreenPass } from '../FullscreenPass';
+import blurFrag from '@/shaders/blur.frag';
+import { FullscreenPass } from '@/renderer/FullscreenPass';
 
 type U<T> = THREE.IUniform<T>;
 

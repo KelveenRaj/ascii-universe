@@ -1,0 +1,22 @@
+.screen {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 16px;
+  text-align: center;
+  font-size: 8px;
+  background: repeating-linear-gradient(0deg, #000 0 2px, #0d0d0d 2px 4px);
+  color: var(--ink);
+  text-shadow: 0 0 8px var(--glow);
+  z-index: 9;
+}
+
+.screen p {
+  margin: 0;
+}
+
+.title {
+  font-size: 24px;
+  color: var(--ink-bright);
+}

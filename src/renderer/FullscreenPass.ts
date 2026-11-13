@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import fullscreenVert from '../shaders/fullscreen.vert';
+import fullscreenVert from '@/shaders/fullscreen.vert';
 
 /** One clip-space triangle that covers the whole viewport (cheaper than a quad: no diagonal seam). */
 function createFullscreenTriangle(): THREE.BufferGeometry {

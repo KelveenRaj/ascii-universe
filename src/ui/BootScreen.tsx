@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useStore } from 'zustand';
-import { statsStore } from '../state/stats';
+import { statsStore } from '@/state/stats';
+import styles from '@/ui/BootScreen.module.css';
+import commonStyles from '@/ui/common.module.css';
+import { cx } from '@/ui/cx';
 
 const LINES = [
   'ASCII UNIVERSE BIOS V1.0',
@@ -38,10 +41,10 @@ export function BootScreen() {
 
   if (gone) return null;
   return (
-    <div className={`boot${done ? ' is-done' : ''}`} aria-hidden="true">
+    <div id="boot-screen" className={cx(styles.boot, done && styles.done)} aria-hidden="true">
       <pre>
         {LINES.slice(0, shown).join('\n')}
-        <span className="boot-cursor">_</span>
+        <span className={commonStyles.cursor}>_</span>
       </pre>
     </div>
   );

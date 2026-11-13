@@ -1,4 +1,4 @@
-import type { Settings } from './settings';
+import type { Settings } from '@/state/settings';
 
 /**
  * Coarse device detection for starting defaults. A touch-first device (phone, tablet) gets lighter

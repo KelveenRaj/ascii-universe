@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { glyphIndicesToText } from '../src/renderer/textExport';
+import { glyphIndicesToText } from '@/renderer/textExport';
 
 /** Builds an RGBA buffer the way WebGL returns it: bottom row first. */
 function pixels(rowsTopFirst: number[][]): Uint8Array {

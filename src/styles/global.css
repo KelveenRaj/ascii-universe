@@ -1,3 +1,6 @@
+/* Page-wide basics only: theme variables, reset, fonts. Component styles live next to each
+   component in *.module.css (scoped class names). */
+
 :root {
   --bg: #050302;
   /* defaults; usePaletteTheme() overrides these from the active palette */
@@ -28,31 +31,4 @@ body,
   font-family: var(--font-pixel);
   -webkit-font-smoothing: none;
   font-smooth: never;
-}
-
-.app {
-  position: fixed;
-  inset: 0;
-}
-
-.bh-canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-  touch-action: none; /* we handle all gestures ourselves */
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-.bh-fatal {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-content: center;
-  gap: 16px;
-  padding: 16px;
-  text-align: center;
-  font-size: 8px;
-  line-height: 2.4;
-  background: var(--bg);
 }

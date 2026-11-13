@@ -1,4 +1,4 @@
-import type { CameraController, ViewPreset } from './CameraController';
+import type { CameraController, ViewPreset } from '@/renderer/camera/CameraController';
 
 /** Radians of orbit per viewport-height of drag. */
 const ORBIT_PER_HEIGHT = Math.PI;

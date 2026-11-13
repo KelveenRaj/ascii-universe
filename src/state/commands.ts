@@ -1,4 +1,4 @@
-import type { ViewPreset } from '../renderer/camera/CameraController';
+import type { ViewPreset } from '@/renderer/camera/CameraController';
 
 /**
  * One-shot commands from the UI to the engine (things that aren't settings, like "jump to this

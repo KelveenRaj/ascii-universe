@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import presentFrag from '../../shaders/present.frag';
-import { DEBUG_VIEWS, type DebugView } from '../../state/settings';
-import { FullscreenPass } from '../FullscreenPass';
-import type { PaletteColors } from './AsciiPass';
+import presentFrag from '@/shaders/present.frag';
+import { DEBUG_VIEWS, type DebugView } from '@/state/settings';
+import { FullscreenPass } from '@/renderer/FullscreenPass';
+import type { PaletteColors } from '@/renderer/passes/AsciiPass';
 
 type U<T> = THREE.IUniform<T>;
 

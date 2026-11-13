@@ -1,0 +1,21 @@
+.canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none; /* we handle all gestures ourselves */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.fatal {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 16px;
+  padding: 16px;
+  text-align: center;
+  font-size: 8px;
+  line-height: 2.4;
+  background: var(--bg);
+}

@@ -1,4 +1,4 @@
-import { GLYPH_SIZE } from './glyphs/bitmaps';
+import { GLYPH_SIZE } from '@/renderer/glyphs/bitmaps';
 
 export interface CharGrid {
   cols: number;

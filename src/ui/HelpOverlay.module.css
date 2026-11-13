@@ -1,0 +1,33 @@
+.help {
+  width: min(640px, 100%);
+  overflow-y: auto;
+}
+
+.groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0 24px;
+  padding: 0 16px 16px;
+}
+
+.list {
+  margin: 0;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+}
+
+.row dt {
+  color: var(--ink-bright);
+}
+
+.row dd {
+  margin: 0;
+  color: var(--accent);
+  text-align: right;
+}

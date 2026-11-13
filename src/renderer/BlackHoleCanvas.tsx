@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Engine } from './Engine';
+import styles from '@/renderer/BlackHoleCanvas.module.css';
+import { Engine } from '@/renderer/Engine';
 
 /**
  * The only component that touches WebGL. It mounts a canvas, hands it to the Engine and disposes the
@@ -29,9 +30,9 @@ export function BlackHoleCanvas() {
 
   return (
     <>
-      <canvas ref={canvasRef} className="bh-canvas" />
+      <canvas ref={canvasRef} className={styles.canvas} />
       {error && (
-        <div className="bh-fatal" role="alert">
+        <div className={styles.fatal} role="alert">
           <p>NO SIGNAL</p>
           <p>{error}</p>
         </div>

@@ -113,6 +113,10 @@ src/
 tests/        geodesics, camera, glyphs, palettes, grid, settings, quality governor, text export
 ```
 
+Conventions: imports are absolute from `src/` (`import { x } from '@/state/settings'`, enforced by
+ESLint), and component styles are CSS Modules next to each component (`Hud.tsx` + `Hud.module.css`).
+`src/styles/global.css` only holds the theme variables and reset.
+
 ## Credits
 
 - Font: [Press Start 2P](https://fonts.google.com/specimen/Press+Start+2P) by CodeMan38 (OFL),

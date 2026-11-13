@@ -1,0 +1,62 @@
+.panel {
+  position: absolute;
+  top: 72px;
+  right: 16px;
+  bottom: 16px;
+  width: min(360px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  font-size: 8px;
+  z-index: 4;
+  transform: translateX(calc(100% + 32px));
+  /* hidden once slid away, so its glow doesn't leak in at the screen edge */
+  visibility: hidden;
+  transition:
+    transform 0.18s steps(6),
+    visibility 0s 0.18s;
+}
+
+.open {
+  transform: none;
+  visibility: visible;
+  transition: transform 0.18s steps(6);
+}
+
+/* focused programmatically on open so screen readers land inside; the controls inside have
+   their own focus rings, so no outline around the whole box */
+.panel:focus {
+  outline: none;
+}
+
+.body {
+  overflow-y: auto;
+  padding: 4px 14px 16px;
+  scrollbar-color: var(--ink-dim) transparent;
+}
+
+.buttonRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.buttonRow > * {
+  flex: 1;
+}
+
+@media (max-width: 640px) {
+  .panel {
+    top: 64px;
+    right: 12px;
+    bottom: 12px;
+    width: calc(100vw - 24px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel,
+  .open {
+    transition: none;
+  }
+}
