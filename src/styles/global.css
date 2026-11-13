@@ -53,13 +53,23 @@ body,
   background: var(--bg);
 }
 
-.m0-tag {
+.dev-tag {
   position: absolute;
   top: 16px;
   left: 16px;
+  display: grid;
+  gap: 8px;
   font-size: 10px;
+  line-height: 1.2;
   letter-spacing: 1px;
   color: var(--ink);
   text-shadow: 0 0 6px rgba(255, 140, 30, 0.6);
   pointer-events: none;
+}
+
+.dev-tag-hint {
+  margin-top: 4px;
+  font-size: 8px;
+  color: var(--ink-dim);
+  text-shadow: none;
 }
