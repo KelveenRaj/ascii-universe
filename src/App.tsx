@@ -1,11 +1,28 @@
+import { useStore } from 'zustand';
 import { BlackHoleCanvas } from './renderer/BlackHoleCanvas';
-import { DevTag } from './ui/DevTag';
+import { settingsStore } from './state/settings';
+import { BootScreen } from './ui/BootScreen';
+import { HelpOverlay } from './ui/HelpOverlay';
+import { Hud, KeyHint, TopBar } from './ui/Hud';
+import { SettingsPanel } from './ui/SettingsPanel';
+import { useGlobalKeys } from './ui/useGlobalKeys';
+import { usePaletteTheme } from './ui/usePaletteTheme';
+import './ui/ui.css';
 
 export default function App() {
+  usePaletteTheme();
+  useGlobalKeys();
+  const hud = useStore(settingsStore, (s) => s.hud);
+
   return (
     <main className="app">
       <BlackHoleCanvas />
-      <DevTag />
+      {hud && <Hud />}
+      {hud && <KeyHint />}
+      <TopBar />
+      <SettingsPanel />
+      <HelpOverlay />
+      <BootScreen />
     </main>
   );
 }

@@ -20,6 +20,21 @@ describe('character grid', () => {
     expect(g.offsetY).toBe(10);
   });
 
+  it('custom columns fit the width exactly', () => {
+    const g = computeGrid(1920, 1080, 0, 200);
+    expect(g.cols).toBe(200);
+    expect(g.cellPx).toBeCloseTo(9.6);
+    expect(g.scale).toBeCloseTo(1.2);
+    expect(g.rows).toBe(112);
+    expect(g.offsetX).toBe(0);
+  });
+
+  it('custom columns never shrink cells below 4 px', () => {
+    const g = computeGrid(400, 300, 0, 400);
+    expect(g.cellPx).toBe(4);
+    expect(g.cols).toBe(100);
+  });
+
   it('never returns an empty grid', () => {
     const g = computeGrid(3, 3, 4);
     expect(g.cols).toBe(1);

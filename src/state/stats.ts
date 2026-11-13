@@ -15,6 +15,10 @@ export interface Stats {
   glyphScale: number;
   /** Attract-mode orbit is running. */
   attract: boolean;
+  /** Current ray-march step budget. */
+  steps: number;
+  /** First frame with the real glyph font has been drawn (the boot screen waits for this). */
+  ready: boolean;
 }
 
 export const statsStore = createStore<Stats>()(() => ({
@@ -27,4 +31,6 @@ export const statsStore = createStore<Stats>()(() => ({
   rows: 0,
   glyphScale: 0,
   attract: false,
+  steps: 0,
+  ready: false,
 }));

@@ -66,12 +66,13 @@ export class ScenePass {
     camera: THREE.PerspectiveCamera,
     s: Settings,
     time: number,
+    steps: number,
   ): void {
     const u = this.pass.uniforms;
     u.uCamPos.value.copy(camera.position);
     u.uCamBasis.value.setFromMatrix4(camera.matrixWorld);
     u.uTime.value = time;
-    u.uMaxSteps.value = s.maxSteps;
+    u.uMaxSteps.value = steps;
     u.uDiskInner.value = s.diskInner;
     u.uDiskOuter.value = s.diskOuter;
     u.uBeaming.value = s.beaming;

@@ -5,8 +5,10 @@ import {
   DEBUG_VIEWS,
   settingsStore,
   type DebugView,
+  stepsFor,
   type SettingsState,
 } from '../state/settings';
+import { onCommand } from '../state/commands';
 import { statsStore } from '../state/stats';
 import { CameraController, VIEW_PRESETS, type ViewPreset } from './camera/CameraController';
 import { InputManager, isTypingTarget } from './camera/InputManager';
@@ -71,6 +73,7 @@ export class Engine {
   private frozenTime: number | null = null;
   private fpsFrames = 0;
   private fpsWindowStart = 0;
+  private fontReady = false;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -109,6 +112,12 @@ export class Engine {
 
     // Settings that need resources rebuilt are handled once on change, not checked every frame.
     this.unsubscribers.push(settingsStore.subscribe((s, prev) => this.onSettingsChange(s, prev)));
+    this.unsubscribers.push(
+      onCommand((cmd) => {
+        if (cmd.type === 'preset') this.controller.setPreset(cmd.preset);
+        else if (cmd.type === 'resetView') this.controller.reset();
+      }),
+    );
     window.addEventListener('keydown', this.onKey);
     if (import.meta.env.DEV) this.applyDevQueryParams();
 
@@ -121,6 +130,7 @@ export class Engine {
       if (!ready) console.warn('Pixel font unavailable; using dither-block glyphs.');
       this.rasterizer = new GlyphRasterizer(ready);
       this.rebuildAtlas();
+      this.fontReady = true;
     });
 
     this.renderer.setAnimationLoop((time) => this.frame(time));
@@ -133,6 +143,7 @@ export class Engine {
     if (
       s.ascii !== prev.ascii ||
       s.glyphScale !== prev.glyphScale ||
+      s.columns !== prev.columns ||
       s.supersample !== prev.supersample ||
       s.debugView !== prev.debugView
     ) {
@@ -222,7 +233,8 @@ export class Engine {
       case ']': {
         const current = this.grid?.scale ?? 1;
         const next = current + (e.key === ']' ? 1 : -1);
-        s.set('glyphScale', Math.min(MAX_GLYPH_SCALE, Math.max(1, next)));
+        s.set('columns', 0);
+        s.set('glyphScale', Math.min(MAX_GLYPH_SCALE, Math.max(1, Math.round(next))));
         break;
       }
     }
@@ -244,7 +256,7 @@ export class Engine {
     const s = settingsStore.getState();
 
     if (this.asciiActive) {
-      const grid = computeGrid(this.drawSize.x, this.drawSize.y, s.glyphScale);
+      const grid = computeGrid(this.drawSize.x, this.drawSize.y, s.glyphScale, s.columns);
       this.grid = grid;
       this.scene.setSize(
         grid.cols * s.supersample,
@@ -279,7 +291,8 @@ export class Engine {
     this.controller.update(dt);
     this.controller.apply(this.camera);
 
-    this.scene.render(this.renderer, this.camera, s, this.frozenTime ?? this.diskTime);
+    const steps = stepsFor(s.quality);
+    this.scene.render(this.renderer, this.camera, s, this.frozenTime ?? this.diskTime, steps);
 
     const fx = crtStrengths(s);
     const crtOn = s.debugView === 'final' && anyCrtEffect(fx);
@@ -298,10 +311,11 @@ export class Engine {
 
     if (crtOn) this.crt.render(this.renderer, fx, timeMs / 1000);
 
-    this.updateStats(timeMs);
+    if (this.fontReady && !statsStore.getState().ready) statsStore.setState({ ready: true });
+    this.updateStats(timeMs, steps);
   }
 
-  private updateStats(timeMs: number): void {
+  private updateStats(timeMs: number, steps: number): void {
     this.fpsFrames++;
     const elapsed = timeMs - this.fpsWindowStart;
     if (elapsed < STATS_INTERVAL_MS) return;
@@ -312,6 +326,7 @@ export class Engine {
       distance,
       inclination: (Math.acos(Math.abs(pos.y) / Math.max(distance, 1e-6)) * 180) / Math.PI,
       attract: this.controller.attractActive,
+      steps,
     });
     this.fpsFrames = 0;
     this.fpsWindowStart = timeMs;

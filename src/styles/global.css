@@ -1,7 +1,11 @@
 :root {
   --bg: #050302;
+  /* defaults; usePaletteTheme() overrides these from the active palette */
   --ink: #ffc04d;
+  --ink-bright: #ffe49a;
   --ink-dim: #8c1d04;
+  --accent: #e8660f;
+  --glow: rgba(232, 102, 15, 0.55);
   --font-pixel: 'Press Start 2P', ui-monospace, monospace;
   color-scheme: dark;
 }
@@ -48,29 +52,7 @@ body,
   gap: 16px;
   padding: 16px;
   text-align: center;
-  font-size: 12px;
-  line-height: 1.8;
-  background: var(--bg);
-}
-
-.dev-tag {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  display: grid;
-  gap: 8px;
-  font-size: 10px;
-  line-height: 1.2;
-  letter-spacing: 1px;
-  color: var(--ink);
-  text-shadow: 0 0 6px rgba(255, 140, 30, 0.6);
-  pointer-events: none;
-}
-
-.dev-tag-hint {
-  margin-top: 4px;
   font-size: 8px;
-  line-height: 1.8;
-  color: var(--ink-dim);
-  text-shadow: none;
+  line-height: 2.4;
+  background: var(--bg);
 }

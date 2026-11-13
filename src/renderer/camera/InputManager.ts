@@ -59,9 +59,13 @@ interface PointerInfo {
 
 type DragMode = 'none' | 'orbit' | 'pan' | 'gesture';
 
-/** True when typing in a form field, where camera keys must not fire. */
+/**
+ * True when the event comes from a form field or from inside a UI panel (anything marked
+ * `data-ui`), where camera and render shortcuts must not fire.
+ */
 export function isTypingTarget(target: EventTarget | null): boolean {
   return (
+    (target instanceof Element && target.closest('[data-ui]') !== null) ||
     target instanceof HTMLInputElement ||
     target instanceof HTMLTextAreaElement ||
     target instanceof HTMLSelectElement ||
