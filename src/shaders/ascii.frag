@@ -7,6 +7,8 @@ precision highp int;
 uniform sampler2D uScene;
 uniform sampler2D uLut;
 uniform sampler2D uAtlas;
+uniform sampler2D uBloom;   // blurred bright tones, one texel per cell (see blur.frag)
+uniform float uBloomStrength; // 0 = off
 uniform vec2 uGrid;       // columns, rows
 uniform vec2 uGridOffset; // drawing-buffer pixels left/below the grid (it is centred)
 uniform float uCellPx;    // cell size in drawing-buffer pixels (8 × glyph scale)
@@ -50,5 +52,13 @@ void main() {
 
   // shadow cells (scene.g < 0) are pure black, sky cells get the palette background
   vec3 paper = scene.g < 0.0 ? vec3(0.0) : uBackground;
-  fragColor = vec4(mix(paper, inkColor, ink), 1.0);
+  vec3 col = mix(paper, inkColor, ink);
+
+  // phosphor glow: sampled smoothly across cells so it bleeds between glyphs
+  if (uBloomStrength > 0.0) {
+    vec2 b = texture(uBloom, p / uGrid).rg;
+    vec3 glow = lut(mix(0.55, 1.0, b.r)) * b.r + uStarTint * b.g * 0.25;
+    col += glow * uBloomStrength * (1.0 - 0.5 * ink);
+  }
+  fragColor = vec4(col, 1.0);
 }

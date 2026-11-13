@@ -20,7 +20,7 @@ export function DevTag() {
 
   return (
     <div className="dev-tag" aria-hidden="true">
-      <div>ASCII UNIVERSE · M3</div>
+      <div>ASCII UNIVERSE · M4</div>
       <div>
         {fps} FPS · {cols > 0 ? `GRID ${cols}×${rows} @${scale}×` : `SMOOTH ${w}×${h}`}
       </div>
@@ -34,7 +34,7 @@ export function DevTag() {
       </div>
       <div className="dev-tag-hint">
         DRAG ORBIT · RIGHT-DRAG PAN · WHEEL ZOOM · WASD · Q/E ROLL · 1/2/3 · 0 RESET
-        <br />[ ] SIZE · R RAMP · P PALETTE · G ASCII · V DEBUG · SPACE PAUSE
+        <br />[ ] SIZE · R RAMP · P PALETTE · B BLOOM · T CRT · G ASCII · V DEBUG · SPACE PAUSE
       </div>
     </div>
   );
