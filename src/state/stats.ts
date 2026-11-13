@@ -13,6 +13,8 @@ export interface Stats {
   cols: number;
   rows: number;
   glyphScale: number;
+  /** Attract-mode orbit is running. */
+  attract: boolean;
 }
 
 export const statsStore = createStore<Stats>()(() => ({
@@ -24,4 +26,5 @@ export const statsStore = createStore<Stats>()(() => ({
   cols: 0,
   rows: 0,
   glyphScale: 0,
+  attract: false,
 }));

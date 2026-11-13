@@ -32,6 +32,8 @@ export interface Settings {
   starDensity: number;
   /** Upper bound on geodesic integration steps per ray. */
   maxSteps: number;
+  /** Slow automatic orbit after 30 s without input, like an arcade attract screen. */
+  attractMode: boolean;
   debugView: DebugView;
   paused: boolean;
 }
@@ -58,6 +60,7 @@ export const DEFAULT_SETTINGS: Settings = {
   diskOuter: 12,
   starDensity: 0.3,
   maxSteps: 300,
+  attractMode: true,
   debugView: 'final',
   paused: false,
 };

@@ -70,6 +70,7 @@ body,
 .dev-tag-hint {
   margin-top: 4px;
   font-size: 8px;
+  line-height: 1.8;
   color: var(--ink-dim);
   text-shadow: none;
 }

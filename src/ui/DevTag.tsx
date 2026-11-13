@@ -16,10 +16,11 @@ export function DevTag() {
   const ramp = useStore(settingsStore, (s) => s.ramp);
   const palette = useStore(settingsStore, (s) => s.palette);
   const paused = useStore(settingsStore, (s) => s.paused);
+  const attract = useStore(statsStore, (s) => s.attract);
 
   return (
     <div className="dev-tag" aria-hidden="true">
-      <div>ASCII UNIVERSE · M2</div>
+      <div>ASCII UNIVERSE · M3</div>
       <div>
         {fps} FPS · {cols > 0 ? `GRID ${cols}×${rows} @${scale}×` : `SMOOTH ${w}×${h}`}
       </div>
@@ -29,9 +30,11 @@ export function DevTag() {
       <div>
         {view !== 'final' ? `VIEW ${view.toUpperCase()}` : `${ramp} · ${palette}`.toUpperCase()}
         {paused ? ' · PAUSED' : ''}
+        {attract ? ' · ATTRACT' : ''}
       </div>
       <div className="dev-tag-hint">
-        DRAG · WHEEL · 1/2/3 VIEWS · [ ] SIZE · R RAMP · P PALETTE · G ASCII · V DEBUG
+        DRAG ORBIT · RIGHT-DRAG PAN · WHEEL ZOOM · WASD · Q/E ROLL · 1/2/3 · 0 RESET
+        <br />[ ] SIZE · R RAMP · P PALETTE · G ASCII · V DEBUG · SPACE PAUSE
       </div>
     </div>
   );

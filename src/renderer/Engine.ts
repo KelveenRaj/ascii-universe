@@ -4,7 +4,8 @@ import blackholeFrag from '../shaders/blackhole.frag';
 import presentFrag from '../shaders/present.frag';
 import { DEBUG_VIEWS, settingsStore, type DebugView, type SettingsState } from '../state/settings';
 import { statsStore } from '../state/stats';
-import { TempOrbit, VIEW_PRESETS } from './camera/TempOrbit';
+import { CameraController, VIEW_PRESETS, type ViewPreset } from './camera/CameraController';
+import { InputManager, isTypingTarget } from './camera/InputManager';
 import { FullscreenPass } from './FullscreenPass';
 import {
   buildGlyphAtlas,
@@ -38,7 +39,8 @@ export class Engine {
   private readonly renderer: THREE.WebGLRenderer;
   private readonly resizeObserver: ResizeObserver;
   private readonly camera = new THREE.PerspectiveCamera(FOV_DEG, 1, 0.1, 1000);
-  private readonly orbit: TempOrbit;
+  private readonly controller: CameraController;
+  private readonly input: InputManager;
   private readonly sceneTarget: THREE.WebGLRenderTarget;
   private readonly lut: THREE.DataTexture;
   private readonly drawSize = new THREE.Vector2();
@@ -166,7 +168,9 @@ export class Engine {
     // Settings that need resources rebuilt are handled once on change, not checked every frame.
     this.unsubscribers.push(settingsStore.subscribe((s, prev) => this.onSettingsChange(s, prev)));
 
-    this.orbit = new TempOrbit(canvas);
+    this.controller = new CameraController(Math.tan((FOV_DEG * Math.PI) / 360));
+    this.controller.attractEnabled = settings.attractMode;
+    this.input = new InputManager(canvas, this.controller);
     window.addEventListener('keydown', this.onKey);
     if (import.meta.env.DEV) this.applyDevQueryParams();
 
@@ -186,6 +190,7 @@ export class Engine {
 
   private onSettingsChange(s: SettingsState, prev: SettingsState): void {
     if (s.palette !== prev.palette) this.applyPalette();
+    if (s.attractMode !== prev.attractMode) this.controller.attractEnabled = s.attractMode;
     if (s.ramp !== prev.ramp) this.rebuildAtlas();
     if (
       s.ascii !== prev.ascii ||
@@ -221,15 +226,21 @@ export class Engine {
     const q = new URLSearchParams(window.location.search);
     const s = settingsStore.getState();
     const preset = q.get('preset');
-    if (preset && preset in VIEW_PRESETS) this.orbit.setPreset(preset as keyof typeof VIEW_PRESETS);
+    if (preset && preset in VIEW_PRESETS) this.controller.setPreset(preset as ViewPreset, true);
     const view = q.get('view');
     if (view && (DEBUG_VIEWS as readonly string[]).includes(view)) {
       s.set('debugView', view as DebugView);
     }
+    const goal = this.controller.goal;
     const dist = Number(q.get('dist'));
-    if (dist > 0) this.orbit.distance = dist;
+    if (dist > 0) goal.distance = dist;
     const elev = q.get('elev');
-    if (elev !== null) this.orbit.elevation = (Number(elev) * Math.PI) / 180;
+    if (elev !== null) goal.elevation = (Number(elev) * Math.PI) / 180;
+    const yaw = q.get('yaw');
+    if (yaw !== null) goal.yaw = (Number(yaw) * Math.PI) / 180;
+    const roll = q.get('roll');
+    if (roll !== null) goal.roll = (Number(roll) * Math.PI) / 180;
+    this.controller.snap();
     const t = q.get('t');
     if (t !== null) this.frozenTime = Number(t);
     const ramp = q.get('ramp');
@@ -243,7 +254,7 @@ export class Engine {
   }
 
   private onKey = (e: KeyboardEvent) => {
-    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+    if (e.ctrlKey || e.metaKey || e.altKey || e.repeat || isTypingTarget(e.target)) return;
     const s = settingsStore.getState();
     const cycle = <T>(list: readonly T[], current: T) =>
       list[(list.indexOf(current) + 1) % list.length];
@@ -329,7 +340,9 @@ export class Engine {
     const s = settingsStore.getState();
 
     if (!s.paused) this.diskTime += dt * s.diskSpeed;
-    this.orbit.apply(this.camera);
+    this.input.update(dt);
+    this.controller.update(dt);
+    this.controller.apply(this.camera);
 
     const u = this.scenePass.uniforms;
     u.uCamPos.value.copy(this.camera.position);
@@ -366,6 +379,7 @@ export class Engine {
       fps: Math.round((this.fpsFrames * 1000) / elapsed),
       distance,
       inclination: (Math.acos(Math.abs(pos.y) / Math.max(distance, 1e-6)) * 180) / Math.PI,
+      attract: this.controller.attractActive,
     });
     this.fpsFrames = 0;
     this.fpsWindowStart = timeMs;
@@ -378,7 +392,7 @@ export class Engine {
     this.resizeObserver.disconnect();
     window.removeEventListener('keydown', this.onKey);
     this.unsubscribers.forEach((off) => off());
-    this.orbit.dispose();
+    this.input.dispose();
     this.scenePass.dispose();
     this.asciiPass.dispose();
     this.presentPass.dispose();
