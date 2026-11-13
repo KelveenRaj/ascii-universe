@@ -1,4 +1,5 @@
 import { createStore } from 'zustand/vanilla';
+import type { RampId } from '../renderer/glyphs/ramps';
 import type { PaletteId } from '../renderer/palette/palettes';
 
 /**
@@ -10,6 +11,13 @@ export const DEBUG_VIEWS = ['final', 'intensity', 'redshift', 'steps'] as const;
 export type DebugView = (typeof DEBUG_VIEWS)[number];
 
 export interface Settings {
+  /** false shows the smooth (non-ASCII) render, handy for comparison and debugging. */
+  ascii: boolean;
+  ramp: RampId;
+  /** Glyph pixel size multiplier: 0 = auto (aims for ~120–160 columns), else 1..4. */
+  glyphScale: number;
+  /** Scene texels per cell edge: 2 = 2×2 supersampling (less shimmer), 1 = fastest. */
+  supersample: 1 | 2;
   palette: PaletteId;
   /** Multiplies disk intensity before the 1 - e^(-x) tonemap. */
   exposure: number;
@@ -38,13 +46,17 @@ export interface SettingsActions {
 export type SettingsState = Settings & SettingsActions;
 
 export const DEFAULT_SETTINGS: Settings = {
+  ascii: true,
+  ramp: 'classic',
+  glyphScale: 0,
+  supersample: 2,
   palette: 'eht',
   exposure: 2.2,
   diskSpeed: 6,
   beaming: 3,
   diskInner: 3,
   diskOuter: 12,
-  starDensity: 0.5,
+  starDensity: 0.3,
   maxSteps: 300,
   debugView: 'final',
   paused: false,

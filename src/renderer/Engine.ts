@@ -1,18 +1,27 @@
 import * as THREE from 'three';
+import asciiFrag from '../shaders/ascii.frag';
 import blackholeFrag from '../shaders/blackhole.frag';
 import presentFrag from '../shaders/present.frag';
-import { DEBUG_VIEWS, settingsStore, type DebugView } from '../state/settings';
+import { DEBUG_VIEWS, settingsStore, type DebugView, type SettingsState } from '../state/settings';
 import { statsStore } from '../state/stats';
 import { TempOrbit, VIEW_PRESETS } from './camera/TempOrbit';
 import { FullscreenPass } from './FullscreenPass';
+import {
+  buildGlyphAtlas,
+  GlyphRasterizer,
+  loadPixelFont,
+  type GlyphAtlas,
+} from './glyphs/GlyphAtlas';
+import { RAMP_IDS, RAMPS } from './glyphs/ramps';
+import { computeGrid, MAX_GLYPH_SCALE, type CharGrid } from './grid';
 import { createLutTexture, hexToRgb, updateLutTexture } from './palette/lut';
-import { PALETTES } from './palette/palettes';
+import { PALETTE_IDS, PALETTES } from './palette/palettes';
 
 const MAX_PIXEL_RATIO = 2;
 const FOV_DEG = 50;
-/** M1 renders the scene at a reduced resolution and upscales; M2 switches to one texel per glyph. */
-const SCENE_SCALE = 0.6;
-const SCENE_MAX_HEIGHT = 600;
+/** Smooth (non-ASCII) mode renders at a fraction of the screen and upscales. */
+const SMOOTH_SCALE = 0.6;
+const SMOOTH_MAX_HEIGHT = 600;
 const STATS_INTERVAL_MS = 250;
 
 type U<T> = THREE.IUniform<T>;
@@ -20,6 +29,9 @@ type U<T> = THREE.IUniform<T>;
 /**
  * Owns the WebGL renderer, the pass graph and the render loop. Plain TypeScript: React only creates
  * and disposes it (see BlackHoleCanvas), it never drives frames.
+ *
+ * Frame: scenePass (black hole, low-res half-float) → asciiPass (glyphs, to screen)
+ *                                                   ↘ presentPass (smooth / debug views, to screen)
  */
 export class Engine {
   private readonly canvas: HTMLCanvasElement;
@@ -29,7 +41,11 @@ export class Engine {
   private readonly orbit: TempOrbit;
   private readonly sceneTarget: THREE.WebGLRenderTarget;
   private readonly lut: THREE.DataTexture;
+  private readonly drawSize = new THREE.Vector2();
   private readonly unsubscribers: Array<() => void> = [];
+  private rasterizer: GlyphRasterizer;
+  private atlas: GlyphAtlas;
+  private grid: CharGrid | null = null;
 
   private readonly scenePass: FullscreenPass<{
     uCamPos: U<THREE.Vector3>;
@@ -43,6 +59,21 @@ export class Engine {
     uDiskOuter: U<number>;
     uBeaming: U<number>;
     uStarDensity: U<number>;
+  }>;
+
+  private readonly asciiPass: FullscreenPass<{
+    uScene: U<THREE.Texture>;
+    uLut: U<THREE.Texture>;
+    uAtlas: U<THREE.Texture>;
+    uGrid: U<THREE.Vector2>;
+    uGridOffset: U<THREE.Vector2>;
+    uCellPx: U<number>;
+    uExposure: U<number>;
+    uRampLength: U<number>;
+    uStarBase: U<number>;
+    uStarLength: U<number>;
+    uStarTint: U<THREE.Vector3>;
+    uBackground: U<THREE.Vector3>;
   }>;
 
   private readonly presentPass: FullscreenPass<{
@@ -87,6 +118,13 @@ export class Engine {
     const palette = PALETTES[settings.palette];
     this.lut = createLutTexture(palette);
 
+    // Until the pixel font has loaded, glyphs fall back to dither blocks; swapped in a moment later.
+    this.rasterizer = new GlyphRasterizer(false);
+    this.atlas = buildGlyphAtlas(this.rasterizer, RAMPS[settings.ramp].chars);
+
+    const starTint = new THREE.Vector3(...hexToRgb(palette.starTint));
+    const background = new THREE.Vector3(...hexToRgb(palette.background));
+
     this.scenePass = new FullscreenPass(blackholeFrag, {
       uCamPos: { value: new THREE.Vector3() },
       uCamBasis: { value: new THREE.Matrix3() },
@@ -101,21 +139,32 @@ export class Engine {
       uStarDensity: { value: settings.starDensity },
     });
 
+    this.asciiPass = new FullscreenPass(asciiFrag, {
+      uScene: { value: this.sceneTarget.texture },
+      uLut: { value: this.lut },
+      uAtlas: { value: this.atlas.texture },
+      uGrid: { value: new THREE.Vector2(1, 1) },
+      uGridOffset: { value: new THREE.Vector2() },
+      uCellPx: { value: 8 },
+      uExposure: { value: settings.exposure },
+      uRampLength: { value: this.atlas.rampLength },
+      uStarBase: { value: this.atlas.starBase },
+      uStarLength: { value: this.atlas.starLength },
+      uStarTint: { value: starTint },
+      uBackground: { value: background },
+    });
+
     this.presentPass = new FullscreenPass(presentFrag, {
       uScene: { value: this.sceneTarget.texture },
       uLut: { value: this.lut },
-      uStarTint: { value: new THREE.Vector3(...hexToRgb(palette.starTint)) },
-      uBackground: { value: new THREE.Vector3(...hexToRgb(palette.background)) },
+      uStarTint: { value: starTint },
+      uBackground: { value: background },
       uExposure: { value: settings.exposure },
       uDebugView: { value: 0 },
     });
 
-    // Palette changes rebuild the LUT once, instead of being checked every frame.
-    this.unsubscribers.push(
-      settingsStore.subscribe((state, prev) => {
-        if (state.palette !== prev.palette) this.applyPalette();
-      }),
-    );
+    // Settings that need resources rebuilt are handled once on change, not checked every frame.
+    this.unsubscribers.push(settingsStore.subscribe((s, prev) => this.onSettingsChange(s, prev)));
 
     this.orbit = new TempOrbit(canvas);
     window.addEventListener('keydown', this.onKey);
@@ -125,24 +174,57 @@ export class Engine {
     this.resizeObserver.observe(canvas);
     this.resize();
 
+    void loadPixelFont().then((ready) => {
+      if (this.disposed) return;
+      if (!ready) console.warn('Pixel font unavailable; using dither-block glyphs.');
+      this.rasterizer = new GlyphRasterizer(ready);
+      this.rebuildAtlas();
+    });
+
     this.renderer.setAnimationLoop((time) => this.frame(time));
+  }
+
+  private onSettingsChange(s: SettingsState, prev: SettingsState): void {
+    if (s.palette !== prev.palette) this.applyPalette();
+    if (s.ramp !== prev.ramp) this.rebuildAtlas();
+    if (
+      s.ascii !== prev.ascii ||
+      s.glyphScale !== prev.glyphScale ||
+      s.supersample !== prev.supersample ||
+      s.debugView !== prev.debugView
+    ) {
+      this.resize();
+    }
   }
 
   private applyPalette(): void {
     const palette = PALETTES[settingsStore.getState().palette];
     updateLutTexture(this.lut, palette);
-    this.presentPass.uniforms.uStarTint.value.set(...hexToRgb(palette.starTint));
-    this.presentPass.uniforms.uBackground.value.set(...hexToRgb(palette.background));
+    // the ascii and present passes share these vectors
+    this.asciiPass.uniforms.uStarTint.value.set(...hexToRgb(palette.starTint));
+    this.asciiPass.uniforms.uBackground.value.set(...hexToRgb(palette.background));
   }
 
-  /** e.g. ?preset=eht&view=redshift&dist=20&t=12 — handy for screenshots while developing. */
+  private rebuildAtlas(): void {
+    const old = this.atlas;
+    this.atlas = buildGlyphAtlas(this.rasterizer, RAMPS[settingsStore.getState().ramp].chars);
+    const u = this.asciiPass.uniforms;
+    u.uAtlas.value = this.atlas.texture;
+    u.uRampLength.value = this.atlas.rampLength;
+    u.uStarBase.value = this.atlas.starBase;
+    u.uStarLength.value = this.atlas.starLength;
+    old.texture.dispose();
+  }
+
+  /** e.g. ?preset=eht&view=redshift&dist=20&t=12&ramp=blocks&scale=2 — for dev screenshots. */
   private applyDevQueryParams(): void {
     const q = new URLSearchParams(window.location.search);
+    const s = settingsStore.getState();
     const preset = q.get('preset');
     if (preset && preset in VIEW_PRESETS) this.orbit.setPreset(preset as keyof typeof VIEW_PRESETS);
     const view = q.get('view');
     if (view && (DEBUG_VIEWS as readonly string[]).includes(view)) {
-      settingsStore.getState().set('debugView', view as DebugView);
+      s.set('debugView', view as DebugView);
     }
     const dist = Number(q.get('dist'));
     if (dist > 0) this.orbit.distance = dist;
@@ -150,17 +232,57 @@ export class Engine {
     if (elev !== null) this.orbit.elevation = (Number(elev) * Math.PI) / 180;
     const t = q.get('t');
     if (t !== null) this.frozenTime = Number(t);
+    const ramp = q.get('ramp');
+    if (ramp && ramp in RAMPS) s.set('ramp', ramp as keyof typeof RAMPS);
+    const palette = q.get('palette');
+    if (palette && palette in PALETTES) s.set('palette', palette as keyof typeof PALETTES);
+    const scale = Number(q.get('scale'));
+    if (scale >= 1) s.set('glyphScale', scale);
+    if (q.get('ascii') === '0') s.set('ascii', false);
+    if (q.get('ss') === '1') s.set('supersample', 1);
   }
 
   private onKey = (e: KeyboardEvent) => {
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
     const s = settingsStore.getState();
-    if (e.key === 'v' || e.key === 'V') s.cycleDebugView();
-    else if (e.key === ' ') {
-      e.preventDefault();
-      s.togglePaused();
+    const cycle = <T>(list: readonly T[], current: T) =>
+      list[(list.indexOf(current) + 1) % list.length];
+    switch (e.key) {
+      case 'v':
+      case 'V':
+        s.cycleDebugView();
+        break;
+      case ' ':
+        e.preventDefault();
+        s.togglePaused();
+        break;
+      case 'g':
+      case 'G':
+        s.set('ascii', !s.ascii);
+        break;
+      case 'r':
+      case 'R':
+        s.set('ramp', cycle(RAMP_IDS, s.ramp));
+        break;
+      case 'p':
+      case 'P':
+        s.set('palette', cycle(PALETTE_IDS, s.palette));
+        break;
+      case '[':
+      case ']': {
+        const current = this.grid?.scale ?? 1;
+        const next = current + (e.key === ']' ? 1 : -1);
+        s.set('glyphScale', Math.min(MAX_GLYPH_SCALE, Math.max(1, next)));
+        break;
+      }
     }
   };
+
+  /** ASCII glyphs are drawn for the final view only; debug views use the smooth present pass. */
+  private get asciiActive(): boolean {
+    const s = settingsStore.getState();
+    return s.ascii && s.debugView === 'final';
+  }
 
   private resize(): void {
     if (this.disposed) return;
@@ -168,14 +290,36 @@ export class Engine {
     const height = Math.max(1, this.canvas.clientHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO));
     this.renderer.setSize(width, height, false); // CSS owns the element size
+    this.renderer.getDrawingBufferSize(this.drawSize);
 
-    const sceneH = Math.max(90, Math.min(SCENE_MAX_HEIGHT, Math.round(height * SCENE_SCALE)));
-    const sceneW = Math.max(160, Math.round((sceneH * width) / height));
-    this.sceneTarget.setSize(sceneW, sceneH);
-
+    const s = settingsStore.getState();
     const u = this.scenePass.uniforms;
-    u.uAspect.value = width / height;
-    u.uPixelAngle.value = (2 * u.uTanHalfFov.value) / sceneH;
+    let sceneW: number;
+    let sceneH: number;
+
+    if (this.asciiActive) {
+      const grid = computeGrid(this.drawSize.x, this.drawSize.y, s.glyphScale);
+      this.grid = grid;
+      sceneW = grid.cols * s.supersample;
+      sceneH = grid.rows * s.supersample;
+      u.uAspect.value = grid.cols / grid.rows; // cells are square
+      // stars a bit under one cell wide, so each lands in a single cell instead of smearing into two
+      u.uPixelAngle.value = (0.6 * 2 * u.uTanHalfFov.value) / grid.rows;
+      const a = this.asciiPass.uniforms;
+      a.uGrid.value.set(grid.cols, grid.rows);
+      a.uGridOffset.value.set(grid.offsetX, grid.offsetY);
+      a.uCellPx.value = grid.cellPx;
+      statsStore.setState({ cols: grid.cols, rows: grid.rows, glyphScale: grid.scale });
+    } else {
+      this.grid = null;
+      sceneH = Math.max(90, Math.min(SMOOTH_MAX_HEIGHT, Math.round(height * SMOOTH_SCALE)));
+      sceneW = Math.max(160, Math.round((sceneH * width) / height));
+      u.uAspect.value = width / height;
+      u.uPixelAngle.value = (2 * u.uTanHalfFov.value) / sceneH;
+      statsStore.setState({ cols: 0, rows: 0, glyphScale: 0 });
+    }
+
+    this.sceneTarget.setSize(sceneW, sceneH);
     statsStore.setState({ sceneWidth: sceneW, sceneHeight: sceneH });
   }
 
@@ -197,12 +341,17 @@ export class Engine {
     u.uBeaming.value = s.beaming;
     u.uStarDensity.value = s.starDensity;
 
-    const p = this.presentPass.uniforms;
-    p.uExposure.value = s.exposure;
-    p.uDebugView.value = DEBUG_VIEWS.indexOf(s.debugView);
-
     this.scenePass.render(this.renderer, this.sceneTarget);
-    this.presentPass.render(this.renderer, null);
+
+    if (this.asciiActive) {
+      this.asciiPass.uniforms.uExposure.value = s.exposure;
+      this.asciiPass.render(this.renderer, null);
+    } else {
+      const p = this.presentPass.uniforms;
+      p.uExposure.value = s.exposure;
+      p.uDebugView.value = DEBUG_VIEWS.indexOf(s.debugView);
+      this.presentPass.render(this.renderer, null);
+    }
 
     this.updateStats(timeMs);
   }
@@ -231,8 +380,10 @@ export class Engine {
     this.unsubscribers.forEach((off) => off());
     this.orbit.dispose();
     this.scenePass.dispose();
+    this.asciiPass.dispose();
     this.presentPass.dispose();
     this.sceneTarget.dispose();
+    this.atlas.texture.dispose();
     this.lut.dispose();
     // Deliberately NOT calling forceContextLoss(): React StrictMode remounts on the same canvas,
     // and getContext() would hand the new renderer the lost context.

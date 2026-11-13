@@ -9,6 +9,10 @@ export interface Stats {
   inclination: number;
   sceneWidth: number;
   sceneHeight: number;
+  /** Character grid (0 × 0 when ASCII is off). */
+  cols: number;
+  rows: number;
+  glyphScale: number;
 }
 
 export const statsStore = createStore<Stats>()(() => ({
@@ -17,4 +21,7 @@ export const statsStore = createStore<Stats>()(() => ({
   inclination: 0,
   sceneWidth: 0,
   sceneHeight: 0,
+  cols: 0,
+  rows: 0,
+  glyphScale: 0,
 }));

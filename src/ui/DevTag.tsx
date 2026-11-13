@@ -7,25 +7,32 @@ export function DevTag() {
   const fps = useStore(statsStore, (s) => s.fps);
   const distance = useStore(statsStore, (s) => s.distance);
   const inclination = useStore(statsStore, (s) => s.inclination);
+  const cols = useStore(statsStore, (s) => s.cols);
+  const rows = useStore(statsStore, (s) => s.rows);
+  const scale = useStore(statsStore, (s) => s.glyphScale);
   const w = useStore(statsStore, (s) => s.sceneWidth);
   const h = useStore(statsStore, (s) => s.sceneHeight);
   const view = useStore(settingsStore, (s) => s.debugView);
+  const ramp = useStore(settingsStore, (s) => s.ramp);
+  const palette = useStore(settingsStore, (s) => s.palette);
   const paused = useStore(settingsStore, (s) => s.paused);
 
   return (
     <div className="dev-tag" aria-hidden="true">
-      <div>ASCII UNIVERSE · M1</div>
+      <div>ASCII UNIVERSE · M2</div>
       <div>
-        {fps} FPS · {w}×{h}
+        {fps} FPS · {cols > 0 ? `GRID ${cols}×${rows} @${scale}×` : `SMOOTH ${w}×${h}`}
       </div>
       <div>
         DIST {distance.toFixed(1)} · INC {inclination.toFixed(0)}°
       </div>
       <div>
-        VIEW {view.toUpperCase()}
+        {view !== 'final' ? `VIEW ${view.toUpperCase()}` : `${ramp} · ${palette}`.toUpperCase()}
         {paused ? ' · PAUSED' : ''}
       </div>
-      <div className="dev-tag-hint">DRAG · WHEEL · 1/2/3 · V · SPACE</div>
+      <div className="dev-tag-hint">
+        DRAG · WHEEL · 1/2/3 VIEWS · [ ] SIZE · R RAMP · P PALETTE · G ASCII · V DEBUG
+      </div>
     </div>
   );
 }
