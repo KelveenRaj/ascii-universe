@@ -19,6 +19,10 @@ export interface Stats {
   steps: number;
   /** First frame with the real glyph font has been drawn (the boot screen waits for this). */
   ready: boolean;
+  /** Quality shown in the HUD, e.g. "HIGH" or "AUTO·MED". */
+  qualityLabel: string;
+  /** The WebGL context was lost and has not come back yet. */
+  signalLost: boolean;
 }
 
 export const statsStore = createStore<Stats>()(() => ({
@@ -33,4 +37,6 @@ export const statsStore = createStore<Stats>()(() => ({
   attract: false,
   steps: 0,
   ready: false,
+  qualityLabel: '',
+  signalLost: false,
 }));

@@ -34,6 +34,7 @@ const GROUPS: Array<{ title: string; rows: Array<[string, string]> }> = [
       ['0 / HOME', 'RESET VIEW'],
       ['SPACE', 'PAUSE DISK'],
       ['[ ]', 'GLYPH SIZE'],
+      ['C', 'COPY AS TEXT'],
       ['R / P', 'CHARACTERS / PALETTE'],
       ['B / T', 'BLOOM / CRT'],
       ['G / V', 'ASCII / DEBUG VIEW'],

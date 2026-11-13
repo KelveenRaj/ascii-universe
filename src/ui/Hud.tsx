@@ -14,7 +14,7 @@ export function Hud() {
   const rows = useStore(statsStore, (s) => s.rows);
   const steps = useStore(statsStore, (s) => s.steps);
   const attract = useStore(statsStore, (s) => s.attract);
-  const quality = useStore(settingsStore, (s) => s.quality);
+  const qualityLabel = useStore(statsStore, (s) => s.qualityLabel);
   const palette = useStore(settingsStore, (s) => s.palette);
   const paused = useStore(settingsStore, (s) => s.paused);
   const ascii = useStore(settingsStore, (s) => s.ascii);
@@ -25,7 +25,8 @@ export function Hud() {
     ['DIST', `${distance.toFixed(1)} Rs`],
     ['INCL', `${inclination.toFixed(0)}°`],
     ['GRID', ascii && cols > 0 ? `${cols}×${rows}` : 'SMOOTH'],
-    ['STEPS', `${steps} ${quality.toUpperCase()}`],
+    ['STEPS', String(steps)],
+    ['QUAL', qualityLabel],
     ['PAL', PALETTES[palette].label.toUpperCase()],
   ];
   const flags = [
@@ -80,7 +81,7 @@ export function TopBar() {
 export function KeyHint() {
   return (
     <div className="key-hint" aria-hidden="true">
-      TAB SETTINGS · ? HELP · H HUD · DRAG ORBIT · WHEEL ZOOM
+      TAB SETTINGS · ? HELP · C COPY TEXT · H HUD · DRAG ORBIT · WHEEL ZOOM
     </div>
   );
 }

@@ -179,6 +179,15 @@ export function SettingsPanel() {
             onChange={setPalette}
           />
           <NumberSlider label="EXPOSURE" k="exposure" />
+          <PixelButton
+            className="px-btn-wide"
+            onClick={() => {
+              uiStore.getState().setPanelOpen(false);
+              sendCommand({ type: 'captureText' });
+            }}
+          >
+            COPY FRAME AS TEXT (C)
+          </PixelButton>
         </Section>
 
         <Section title="BLACK HOLE">

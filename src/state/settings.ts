@@ -2,6 +2,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { createStore } from 'zustand/vanilla';
 import { RAMPS, type RampId } from '../renderer/glyphs/ramps';
 import { PALETTES, type PaletteId } from '../renderer/palette/palettes';
+import { deviceDefaults } from './deviceTier';
 
 /**
  * Render settings. React writes here (settings panel); the render loop reads
@@ -83,7 +84,7 @@ export interface SettingsActions {
 
 export type SettingsState = Settings & SettingsActions;
 
-export const DEFAULT_SETTINGS: Settings = {
+const BASE_DEFAULTS: Settings = {
   ascii: true,
   ramp: 'classic',
   glyphScale: 0,
@@ -96,7 +97,7 @@ export const DEFAULT_SETTINGS: Settings = {
   diskInner: 3,
   diskOuter: 12,
   starDensity: 0.3,
-  quality: 'high',
+  quality: 'auto',
   attractMode: true,
   hud: true,
   bloom: true,
@@ -117,6 +118,9 @@ export const DEFAULT_SETTINGS: Settings = {
   debugView: 'final',
   paused: false,
 };
+
+/** Defaults, adjusted for touch devices (lighter starting point). */
+export const DEFAULT_SETTINGS: Settings = { ...BASE_DEFAULTS, ...deviceDefaults() };
 
 /** Settings typed exactly `number` (not literal unions like `supersample: 1 | 2`). */
 type NumericKey = {
@@ -212,7 +216,7 @@ export const settingsStore = createStore<SettingsState>()(
   ),
 );
 
-/** Effective ray-march step budget. 'auto' starts at high; the governor adjusts it at runtime. */
+/** Step budget for a fixed quality level. For 'auto' the engine uses the governor's tier; this is just its starting value. */
 export function stepsFor(quality: Quality): number {
   return quality === 'auto' ? QUALITY_STEPS.high : QUALITY_STEPS[quality];
 }

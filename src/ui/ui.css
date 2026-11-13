@@ -164,11 +164,17 @@
   font-size: 8px;
   z-index: 4;
   transform: translateX(calc(100% + 32px));
-  transition: transform 0.18s steps(6);
+  /* hidden once slid away, so its glow doesn't leak in at the screen edge */
+  visibility: hidden;
+  transition:
+    transform 0.18s steps(6),
+    visibility 0s 0.18s;
 }
 
 .panel.is-open {
   transform: none;
+  visibility: visible;
+  transition: transform 0.18s steps(6);
 }
 
 .panel-header {
@@ -398,6 +404,77 @@
   margin: 0;
   color: var(--accent);
   text-align: right;
+}
+
+/* ---- Copy as text ------------------------------------------------------------------------- */
+
+.text-export {
+  display: flex;
+  flex-direction: column;
+  width: min(1460px, 100%);
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  font-size: 8px;
+}
+
+.text-export-preview {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  margin: 12px;
+  padding: 8px;
+  background: #000;
+  border: 2px solid var(--ink-dim);
+}
+
+.text-export-preview pre {
+  margin: 0;
+  width: max-content;
+  margin-inline: auto;
+  font-family: ui-monospace, Consolas, 'Cascadia Mono', Menlo, monospace;
+  line-height: 1;
+  color: var(--ink);
+  text-shadow: none;
+  user-select: text;
+  -webkit-font-smoothing: auto;
+}
+
+.text-export-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px 12px;
+}
+
+.text-export-info {
+  margin-right: auto;
+  color: var(--accent);
+}
+
+/* ---- Signal lost ---------------------------------------------------------------------------- */
+
+.signal-lost {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 16px;
+  text-align: center;
+  font-size: 8px;
+  background: repeating-linear-gradient(0deg, #000 0 2px, #0d0d0d 2px 4px);
+  color: var(--ink);
+  text-shadow: 0 0 8px var(--glow);
+  z-index: 9;
+}
+
+.signal-lost p {
+  margin: 0;
+}
+
+.signal-lost-title {
+  font-size: 24px;
+  color: var(--ink-bright);
+  animation: blink 1.2s steps(1) infinite;
 }
 
 /* ---- Boot screen ---------------------------------------------------------------------------- */

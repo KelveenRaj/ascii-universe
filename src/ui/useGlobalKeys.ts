@@ -19,7 +19,8 @@ export function useGlobalKeys(): void {
       const inPanel = e.target instanceof Element && e.target.closest('[data-ui]') !== null;
 
       if (e.key === 'Escape') {
-        if (ui.helpOpen) ui.setHelpOpen(false);
+        if (ui.textExport !== null) ui.setTextExport(null);
+        else if (ui.helpOpen) ui.setHelpOpen(false);
         else if (ui.panelOpen) ui.setPanelOpen(false);
         return;
       }
