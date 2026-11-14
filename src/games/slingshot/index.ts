@@ -7,6 +7,6 @@ export const slingshotGame: GameModule = {
   title: 'Slingshot',
   blurb: 'Fling a probe past the black hole and bend its path.',
   bodyId: 'sgr-a-star',
-  cameraPreset: 'interstellar',
+  startView: { elevation: 22, yaw: -25, distance: 44 },
   create: (ctx) => new Slingshot(ctx),
 };

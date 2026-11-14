@@ -1,7 +1,9 @@
 import type { TextLayer } from '@/engine/display/TextLayer';
-import type { GameInstance, GameModule, GameView } from '@/engine/game/Game';
+import type { GameCamera, GameInstance, GameModule, GameView } from '@/engine/game/Game';
 import { GameInput } from '@/engine/game/GameInput';
 import { gameStore, highScoreStore } from '@/state/game';
+
+const LOCKED: GameCamera = { mode: 'locked' };
 
 /**
  * Runs at most one minigame for the Engine: starts and stops it to match navigation, feeds it
@@ -18,6 +20,11 @@ export class GameHost {
   constructor(onStart: (module: GameModule) => void, onStop: () => void) {
     this.onStart = onStart;
     this.onStop = onStop;
+  }
+
+  /** The running game's module, or null. */
+  get module(): GameModule | null {
+    return this.running?.module ?? null;
   }
 
   get active(): boolean {
@@ -61,6 +68,11 @@ export class GameHost {
       this.hudJson = json;
       gameStore.setState({ hud });
     }
+  }
+
+  /** Who drives the camera this frame (call after `update`). */
+  camera(): GameCamera {
+    return this.running?.instance.camera?.() ?? LOCKED;
   }
 
   draw(text: TextLayer, view: GameView): void {

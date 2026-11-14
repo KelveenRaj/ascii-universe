@@ -87,6 +87,8 @@
 
 .pads {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
   pointer-events: auto;
 }
@@ -130,6 +132,10 @@
     left: 12px;
     right: 12px;
     bottom: 12px;
+    justify-content: center;
+  }
+
+  .pads {
     justify-content: center;
   }
 

@@ -21,6 +21,7 @@ import { sceneParamsStore } from '@/state/sceneParams';
 
 const FOV_DEG = 50;
 const STATS_INTERVAL_MS = 250;
+const WORLD_UP = new THREE.Vector3(0, 1, 0);
 /** After a warp the camera starts this many times further out than the first preset and eases in. */
 const ARRIVE_FROM = 2.5;
 /** A press that moves less than this (CSS px) is a click, not a drag. */
@@ -59,6 +60,8 @@ export class Engine {
   private pressAt: { x: number; y: number } | null = null;
   private readonly games: GameHost;
   private readonly gameView: GameView;
+  /** The running game placed the camera itself last frame. */
+  private gameCameraFixed = false;
 
   private disposed = false;
   private contextLost = false;
@@ -195,16 +198,45 @@ export class Engine {
     return module;
   }
 
-  /** Parks the camera on the game's view and hands it the input. */
+  /** Parks the camera on the game's start view and hands it the input. */
   private onGameStart(game: GameModule): void {
-    this.input.setEnabled(false);
+    this.input.setMode('none');
     this.controller.attractEnabled = false;
-    this.controller.setPreset(game.cameraPreset, true);
+    this.controller.setView(game.startView, true);
+    this.gameCameraFixed = false;
   }
 
   private onGameStop(): void {
-    this.input.setEnabled(true);
+    this.input.setMode('all');
     this.controller.attractEnabled = settingsStore.getState().attractMode;
+    // hand the camera back from wherever the game left it
+    if (this.gameCameraFixed) this.controller.placeAt(this.camera.position);
+    this.gameCameraFixed = false;
+  }
+
+  /**
+   * Points the camera the way the running game asks: the player's orbit camera (mouse/touch on or
+   * off), or a pose the game sets. Going back from a game-set pose to orbiting starts from there.
+   */
+  private applyGameCamera(): void {
+    const cam = this.games.camera();
+    if (cam.mode === 'fixed') {
+      this.input.setMode('none');
+      this.camera.position.copy(cam.position);
+      this.camera.up.copy(cam.up ?? WORLD_UP);
+      this.camera.lookAt(cam.target);
+      this.camera.updateMatrixWorld(true);
+      this.gameCameraFixed = true;
+      return;
+    }
+    if (this.gameCameraFixed) {
+      this.controller.placeAt(this.camera.position);
+      this.gameCameraFixed = false;
+    }
+    this.input.setMode(cam.mode === 'orbit' ? 'pointer' : 'none');
+    const module = this.games.module;
+    if (cam.mode === 'orbit' && cam.reset && module) this.controller.setView(module.startView);
+    this.controller.apply(this.camera);
   }
 
   // ---- scene switching ----------------------------------------------------------------------
@@ -312,11 +344,13 @@ export class Engine {
     this.games.sync(this.wantedGame());
     this.input.update(dt);
     this.controller.update(dt);
-    this.controller.apply(this.camera);
     if (this.games.active) {
       const grid = this.display.currentGrid;
       this.gameView.aspect = grid ? grid.cols / grid.rows : this.drawSize.x / this.drawSize.y;
       this.games.update(dt, this.gameView);
+      this.applyGameCamera();
+    } else {
+      this.controller.apply(this.camera);
     }
 
     const tier = this.autoTier;

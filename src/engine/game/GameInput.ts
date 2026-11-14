@@ -3,15 +3,14 @@ import type { GameAction, GameInputFrame } from '@/engine/game/Game';
 
 const KEY_ACTIONS: Record<string, GameAction> = {
   ArrowLeft: 'left',
-  KeyA: 'left',
   ArrowRight: 'right',
-  KeyD: 'right',
   ArrowUp: 'up',
-  KeyW: 'up',
   ArrowDown: 'down',
-  KeyS: 'down',
+  KeyW: 'faster',
+  KeyS: 'slower',
   Space: 'fire',
   Enter: 'fire',
+  KeyF: 'view',
 };
 
 /**

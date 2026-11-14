@@ -1,4 +1,5 @@
 import type * as THREE from 'three';
+import type { CameraView } from '@/engine/camera/CameraController';
 import type { TextLayer } from '@/engine/display/TextLayer';
 
 /**
@@ -8,8 +9,11 @@ import type { TextLayer } from '@/engine/display/TextLayer';
  * game gets the input instead (keys, plus on-screen buttons for touch).
  */
 
-/** Abstract inputs, so keys and on-screen buttons are the same thing to a game. */
-export type GameAction = 'left' | 'right' | 'up' | 'down' | 'fire';
+/**
+ * Abstract inputs, so keys and on-screen buttons are the same thing to a game. Keys: arrows for the
+ * directions, W / S for faster / slower, Space or Enter to fire, F to change the view.
+ */
+export type GameAction = 'left' | 'right' | 'up' | 'down' | 'faster' | 'slower' | 'fire' | 'view';
 
 export interface GameInputFrame {
   /** Held down right now (keys only; buttons are taps). */
@@ -18,7 +22,7 @@ export interface GameInputFrame {
   pressed(action: GameAction): boolean;
 }
 
-/** The fixed camera the game is played from. */
+/** The camera the game is seen through this frame. */
 export interface GameView {
   camera: THREE.PerspectiveCamera;
   tanHalfFov: number;
@@ -35,6 +39,18 @@ export interface GameHud {
   hint: string;
 }
 
+/**
+ * Who drives the camera this frame:
+ * - `locked`: it stays on the game's start view.
+ * - `orbit`: the player orbits and zooms it with the mouse or touch (keys stay with the game);
+ *   `reset` eases it back to the start view first.
+ * - `fixed`: the game places it, looking from `position` at `target`.
+ */
+export type GameCamera =
+  | { mode: 'locked' }
+  | { mode: 'orbit'; reset?: boolean }
+  | { mode: 'fixed'; position: THREE.Vector3; target: THREE.Vector3; up?: THREE.Vector3 };
+
 /** What a game gets from the host. */
 export interface GameContext {
   /** Best score so far (saved in the browser). */
@@ -45,6 +61,8 @@ export interface GameContext {
 
 export interface GameInstance {
   update(dt: number, input: GameInputFrame, view: GameView): void;
+  /** Who drives the camera this frame (asked after `update`). Default: locked. */
+  camera?(): GameCamera;
   /** Draw into the (already cleared) text layer. */
   draw(text: TextLayer, view: GameView): void;
   hud(): GameHud;
@@ -59,7 +77,7 @@ export interface GameModule {
   blurb: string;
   /** The body (and so the scene) the game is played at. */
   bodyId: string;
-  /** Camera preset (of that scene) the game is played from. */
-  cameraPreset: string;
+  /** Where the camera starts (in that scene's units), looking at the origin. */
+  startView: CameraView;
   create(ctx: GameContext): GameInstance;
 }

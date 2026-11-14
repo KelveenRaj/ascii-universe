@@ -174,24 +174,25 @@ test.describe('slingshot', () => {
     await openWith(page, settings, '/#/sgr-a-star');
     await page.getByRole('button', { name: 'PLAY > SLINGSHOT' }).click();
     await expect(page).toHaveURL(/#\/sgr-a-star\/game\/slingshot$/);
-    await expect(panel(page)).toContainText('ANGLE');
+    await expect(panel(page)).toContainText('TURN');
     await expect(page.getByRole('status')).toContainText('SLINGSHOT');
     await expect(page.getByLabel('Status')).toHaveCount(0);
     await expect(page.getByLabel('Navigator')).toHaveCount(0);
   });
 
   test('a round plays out and Esc quits back to the scene', async ({ page }) => {
+    test.setTimeout(240_000);
     await openWith(page, settings, '/#/sgr-a-star/game/slingshot');
     await expect(panel(page)).toContainText('SPEED');
     await page.locator('canvas').click({ position: { x: 5, y: 5 } }); // focus the page
     await page.keyboard.press('Space');
-    await expect(panel(page)).toContainText('PROBE');
+    await expect(panel(page)).toContainText('SHIP');
     // the default shot swings round and escapes; slow under software rendering
-    await expect(page.getByRole('status')).toContainText('SLINGSHOT!', { timeout: 90_000 });
+    await expect(page.getByRole('status')).toContainText('SLINGSHOT!', { timeout: 180_000 });
     await expect(page.getByRole('status')).toContainText('NEW BEST');
 
     await page.keyboard.press('Space');
-    await expect(panel(page)).toContainText('ANGLE');
+    await expect(panel(page)).toContainText('TURN');
     await expect(panel(page)).not.toContainText('BEST0');
 
     await page.keyboard.press('Escape');
@@ -206,7 +207,7 @@ test.describe('slingshot', () => {
     await page.getByRole('button', { name: 'Faster' }).click();
     await expect(panel(page)).toContainText('0.46 c');
     await page.getByRole('button', { name: 'GO', exact: true }).click();
-    await expect(panel(page)).toContainText('PROBE');
+    await expect(panel(page)).toContainText('SHIP');
     await page.getByRole('button', { name: 'QUIT', exact: true }).click();
     await expect(page).toHaveURL(/#\/sgr-a-star$/);
   });

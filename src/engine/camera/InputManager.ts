@@ -86,6 +86,7 @@ export class InputManager {
   private gesture = { cx: 0, cy: 0, dist: 1, angle: 0 };
   private lastTap = { time: 0, x: 0, y: 0 };
   private enabled = true;
+  private keysEnabled = true;
 
   constructor(el: HTMLElement, camera: CameraController) {
     this.el = el;
@@ -102,9 +103,16 @@ export class InputManager {
     window.addEventListener('blur', this.onBlur);
   }
 
-  /** Off while a game runs: the game gets the input instead, and the camera stays put. */
-  setEnabled(on: boolean): void {
-    this.enabled = on;
+  /**
+   * `all` normally; `pointer` while a game lets the player look around (mouse and touch move the
+   * camera, the keys belong to the game); `none` while a game holds the camera.
+   */
+  setMode(mode: 'all' | 'pointer' | 'none'): void {
+    const enabled = mode !== 'none';
+    const keys = mode === 'all';
+    if (enabled === this.enabled && keys === this.keysEnabled) return;
+    this.enabled = enabled;
+    this.keysEnabled = keys;
     this.held.clear();
     this.pointers.clear();
     this.mode = 'none';
@@ -112,7 +120,7 @@ export class InputManager {
 
   /** Applies held keys. Call once per frame before CameraController.update(). */
   update(dt: number): void {
-    if (!this.enabled || this.held.size === 0 || dt <= 0) return;
+    if (!this.keysEnabled || this.held.size === 0 || dt <= 0) return;
     const has = (...codes: string[]) => codes.some((c) => this.held.has(c));
     const shift = has('ShiftLeft', 'ShiftRight');
     const ax = Number(has('KeyD', 'ArrowRight')) - Number(has('KeyA', 'ArrowLeft'));
@@ -218,13 +226,13 @@ export class InputManager {
   private onContextMenu = (e: Event) => e.preventDefault();
 
   private onDoubleClick = () => {
-    if (this.enabled) this.camera.reset();
+    if (this.keysEnabled) this.camera.reset();
   };
 
   // ---- keyboard -------------------------------------------------------------------------------
 
   private onKeyDown = (e: KeyboardEvent) => {
-    if (!this.enabled || e.ctrlKey || e.metaKey || e.altKey || isTypingTarget(e.target)) return;
+    if (!this.keysEnabled || e.ctrlKey || e.metaKey || e.altKey || isTypingTarget(e.target)) return;
     if (HELD_KEYS.has(e.code)) {
       this.held.add(e.code);
       this.camera.notifyInput();
