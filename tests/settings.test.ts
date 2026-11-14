@@ -36,14 +36,19 @@ describe('settings validation', () => {
   it('clamps numbers to their range and rejects NaN / Infinity', () => {
     const out = sanitizeSettings({
       exposure: 999,
-      starDensity: -5,
-      beaming: NaN,
-      diskSpeed: Infinity,
+      bloomStrength: -5,
+      curvatureAmount: NaN,
+      vignetteStrength: Infinity,
     });
     expect(out.exposure).toBe(NUMERIC_RANGES.exposure.max);
-    expect(out.starDensity).toBe(NUMERIC_RANGES.starDensity.min);
-    expect('beaming' in out).toBe(false);
-    expect('diskSpeed' in out).toBe(false);
+    expect(out.bloomStrength).toBe(NUMERIC_RANGES.bloomStrength.min);
+    expect('curvatureAmount' in out).toBe(false);
+    expect('vignetteStrength' in out).toBe(false);
+  });
+
+  it('drops the v1 black-hole keys (they moved to scene params)', () => {
+    const out = sanitizeSettings({ diskSpeed: 2, beaming: 1, starDensity: 0.5, exposure: 3 });
+    expect(out).toEqual({ exposure: 3 });
   });
 
   it('never restores session-only state', () => {

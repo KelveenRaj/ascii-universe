@@ -16,3 +16,8 @@ export const DEFAULT_SCENE_ID: SceneId = blackHoleScene.id;
 export function getScene(id: SceneId): SceneModule {
   return SCENES[id];
 }
+
+/** Lookup by an untrusted string (saved data, URLs). */
+export function findScene(id: string): SceneModule | undefined {
+  return Object.hasOwn(SCENES, id) ? SCENES[id as SceneId] : undefined;
+}

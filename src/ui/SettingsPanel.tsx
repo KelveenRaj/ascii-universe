@@ -11,6 +11,7 @@ import {
   type Quality,
   type Settings,
 } from '@/state/settings';
+import { sceneParamsStore } from '@/state/sceneParams';
 import { statsStore } from '@/state/stats';
 import { uiStore } from '@/state/ui';
 import commonStyles from '@/ui/common.module.css';
@@ -25,6 +26,7 @@ import {
 } from '@/ui/controls';
 import { cx } from '@/ui/cx';
 import styles from '@/ui/SettingsPanel.module.css';
+import { SceneParamControls } from '@/ui/SceneParamControls';
 import { useActiveScene } from '@/ui/useActiveScene';
 
 type SizeOption = 'auto' | '1' | '2' | '3' | '4' | 'custom';
@@ -198,17 +200,15 @@ export function SettingsPanel() {
           </PixelButton>
         </Section>
 
-        <Section title="BLACK HOLE">
+        <Section title={scene.title.toUpperCase()}>
           <Select
             label="QUALITY"
             value={quality}
             options={QUALITY_LEVELS.map((q) => ({ value: q, label: QUALITY_LABELS[q] }))}
             onChange={setQuality}
           />
-          <NumberSlider label="DISK SPEED" k="diskSpeed" />
-          <NumberSlider label="BEAMING" k="beaming" />
-          <NumberSlider label="STARS" k="starDensity" digits={2} />
-          <Toggle label="PAUSE DISK" checked={paused} onChange={setPaused} />
+          <SceneParamControls scene={scene} />
+          <Toggle label="PAUSE" checked={paused} onChange={setPaused} />
         </Section>
 
         <Section title="CRT">
@@ -243,7 +243,13 @@ export function SettingsPanel() {
           <Toggle label="SHOW HUD" checked={hud} onChange={setHud} />
         </Section>
 
-        <PixelButton wide onClick={() => settingsStore.getState().reset()}>
+        <PixelButton
+          wide
+          onClick={() => {
+            settingsStore.getState().reset();
+            sceneParamsStore.getState().resetAll();
+          }}
+        >
           RESET ALL SETTINGS
         </PixelButton>
       </div>

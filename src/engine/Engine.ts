@@ -11,6 +11,7 @@ import { DisplayPipeline } from '@/engine/display/DisplayPipeline';
 import { QualityGovernor } from '@/engine/quality/QualityGovernor';
 import type { SceneInstance } from '@/engine/scene/SceneModule';
 import { activeScene } from '@/state/scene';
+import { sceneParamsStore } from '@/state/sceneParams';
 
 const FOV_DEG = 50;
 const STATS_INTERVAL_MS = 250;
@@ -34,6 +35,7 @@ export class Engine {
   private readonly governor = new QualityGovernor(AUTO_START_TIER);
   private readonly display: DisplayPipeline;
   private readonly scene: SceneInstance;
+  private readonly sceneId: string;
 
   private disposed = false;
   private contextLost = false;
@@ -60,6 +62,7 @@ export class Engine {
 
     const tanHalfFov = Math.tan((FOV_DEG * Math.PI) / 360);
     const module = activeScene();
+    this.sceneId = module.id;
     this.scene = module.create({ tanHalfFov });
     this.controller = new CameraController(tanHalfFov, module.camera);
     this.controller.attractEnabled = settings.attractMode;
@@ -180,6 +183,7 @@ export class Engine {
       target: this.display.sceneTarget,
       camera: this.camera,
       settings: s,
+      params: sceneParamsStore.getState().values[this.sceneId],
       dt,
       steps,
       frozenTime: this.frozenTime,

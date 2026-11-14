@@ -38,7 +38,7 @@ const groups = (presets: SceneModule['camera']['presets']): Group[] => [
       ['Z / X  + / -', 'ZOOM'],
       [presets.map((_, i) => i + 1).join(' '), presets.map((p) => p.label).join(' / ')],
       ['0 / HOME', 'RESET VIEW'],
-      ['SPACE', 'PAUSE DISK'],
+      ['SPACE', 'PAUSE'],
       ['[ ]', 'GLYPH SIZE'],
       ['C', 'COPY AS TEXT'],
       ['R / P', 'CHARACTERS / PALETTE'],

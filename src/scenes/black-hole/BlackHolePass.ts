@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { SceneLayout } from '@/engine/display/DisplayPipeline';
 import { FullscreenPass } from '@/engine/FullscreenPass';
 import type { SceneFrame, SceneInstance } from '@/engine/scene/SceneModule';
+import type { BlackHoleParams } from '@/scenes/black-hole/params';
 import blackholeFrag from '@/scenes/black-hole/shaders/blackhole.frag';
 
 type U<T> = THREE.IUniform<T>;
@@ -10,7 +11,7 @@ type U<T> = THREE.IUniform<T>;
  * Ray-marches the black hole into the display's scene buffer (see shaders/blackhole.frag), and
  * keeps the disk's animation clock.
  */
-export class BlackHolePass implements SceneInstance {
+export class BlackHolePass implements SceneInstance<BlackHoleParams> {
   private readonly pass: FullscreenPass<{
     uCamPos: U<THREE.Vector3>;
     uCamBasis: U<THREE.Matrix3>;
@@ -49,17 +50,18 @@ export class BlackHolePass implements SceneInstance {
     u.uPixelAngle.value = (2 * u.uTanHalfFov.value) / starRows;
   }
 
-  render({ renderer, target, camera, settings: s, dt, steps, frozenTime }: SceneFrame): void {
-    if (!s.paused) this.diskTime += dt * s.diskSpeed;
+  render(frame: SceneFrame<BlackHoleParams>): void {
+    const { renderer, target, camera, settings, params: p, dt, steps, frozenTime } = frame;
+    if (!settings.paused) this.diskTime += dt * p.diskSpeed;
     const u = this.pass.uniforms;
     u.uCamPos.value.copy(camera.position);
     u.uCamBasis.value.setFromMatrix4(camera.matrixWorld);
     u.uTime.value = frozenTime ?? this.diskTime;
     u.uMaxSteps.value = steps;
-    u.uDiskInner.value = s.diskInner;
-    u.uDiskOuter.value = s.diskOuter;
-    u.uBeaming.value = s.beaming;
-    u.uStarDensity.value = s.starDensity;
+    u.uDiskInner.value = p.diskInner;
+    u.uDiskOuter.value = p.diskOuter;
+    u.uBeaming.value = p.beaming;
+    u.uStarDensity.value = p.starDensity;
     this.pass.render(renderer, target);
   }
 

@@ -110,11 +110,11 @@ so moving a slider never re-renders the canvas component.
 src/
   engine/     space-agnostic: Engine (render loop), camera + input, quality governor
     display/  DisplayPipeline: scene buffer, grid, glyph atlas, palettes, bloom/ASCII/CRT/readback
-    scene/    SceneModule: the contract every place you can visit implements
+    scene/    SceneModule (the contract every place implements) and its ParamSchema
   scenes/     one folder per place, plus registry.ts
-    black-hole/  Sgr A*: ray-marching pass + shaders, geodesic physics, camera presets
+    black-hole/  Sgr A*: ray-marching pass + shaders, geodesic physics, camera presets, params
   shaders/    display passes and shared GLSL includes
-  state/      settings (persisted), active scene, stats, UI state, commands
+  state/      settings (persisted), scene params (persisted per scene), active scene, stats, UI, commands
   ui/         HUD, settings panel, help, boot screen, copy-as-text, overlays
 e2e/          Playwright: screenshot tests (baselines in e2e/__screenshots__) and UI checks
 tests/        geodesics, camera, scenes, glyphs, palettes, grid, settings, quality governor, text export

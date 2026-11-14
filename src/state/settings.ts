@@ -3,6 +3,7 @@ import { createStore } from 'zustand/vanilla';
 import { RAMPS, type RampId } from '@/engine/display/glyphs/ramps';
 import { PALETTES, type PaletteId } from '@/engine/display/palette/palettes';
 import { deviceDefaults } from '@/state/deviceTier';
+import { migrateLegacySceneParams, SETTINGS_KEY } from '@/state/legacySettings';
 
 /**
  * Render settings. React writes here (settings panel); the render loop reads
@@ -35,17 +36,8 @@ export interface Settings {
   /** Scene texels per cell edge: 2 = 2×2 supersampling (less shimmer), 1 = fastest. */
   supersample: 1 | 2;
   palette: PaletteId;
-  /** Multiplies disk intensity before the 1 - e^(-x) tonemap. */
+  /** Multiplies scene brightness before the 1 - e^(-x) tonemap. */
   exposure: number;
-  /** Disk animation speed multiplier (1 = physical Keplerian rate in r_s/c units per second). */
-  diskSpeed: number;
-  /** Observed intensity ∝ g^beaming (g = Doppler × gravitational redshift). 4 is bolometric. */
-  beaming: number;
-  /** Disk inner/outer radius in Schwarzschild radii (ISCO = 3). */
-  diskInner: number;
-  diskOuter: number;
-  /** 0..1 fraction of grid cells that hold a star. */
-  starDensity: number;
   /** Ray-march step budget; 'auto' lets the quality governor pick. */
   quality: Quality;
   /** Slow automatic orbit after 30 s without input, like an arcade attract screen. */
@@ -92,11 +84,6 @@ const BASE_DEFAULTS: Settings = {
   supersample: 2,
   palette: 'eht',
   exposure: 2.2,
-  diskSpeed: 6,
-  beaming: 3,
-  diskInner: 3,
-  diskOuter: 12,
-  starDensity: 0.3,
   quality: 'auto',
   attractMode: true,
   hud: true,
@@ -132,11 +119,6 @@ export const NUMERIC_RANGES: Record<NumericKey, { min: number; max: number; step
   glyphScale: { min: 0, max: 4, step: 1 },
   columns: { min: 0, max: 400, step: 4 },
   exposure: { min: 0.3, max: 6, step: 0.1 },
-  diskSpeed: { min: 0, max: 30, step: 0.5 },
-  beaming: { min: 0, max: 6, step: 0.1 },
-  diskInner: { min: 1.6, max: 8, step: 0.1 },
-  diskOuter: { min: 6, max: 30, step: 0.5 },
-  starDensity: { min: 0, max: 1, step: 0.05 },
   bloomStrength: { min: 0, max: 2, step: 0.05 },
   curvatureAmount: { min: 0, max: 1, step: 0.05 },
   scanlineStrength: { min: 0, max: 1, step: 0.05 },
@@ -191,6 +173,9 @@ function persistedSlice(s: SettingsState): Partial<Settings> {
   return out as Partial<Settings>;
 }
 
+// must run before this store loads and drops the v1 black-hole keys it no longer knows
+migrateLegacySceneParams();
+
 export const settingsStore = createStore<SettingsState>()(
   persist(
     (set, get) => ({
@@ -204,8 +189,9 @@ export const settingsStore = createStore<SettingsState>()(
       togglePaused: () => set({ paused: !get().paused }),
     }),
     {
-      name: 'ascii-universe:settings',
-      version: 1,
+      name: SETTINGS_KEY,
+      // v2: scene knobs (disk speed, beaming…) moved to scene params; see legacySettings.ts
+      version: 2,
       // createJSONStorage returns undefined (persistence off) if localStorage is unavailable
       storage: createJSONStorage(() => window.localStorage),
       partialize: persistedSlice,
