@@ -29,13 +29,15 @@ npm run dev        # http://localhost:5173
 
 Other scripts:
 
-| Script                               | What it does                                    |
-| ------------------------------------ | ----------------------------------------------- |
-| `npm run build`                      | Type-check and build a static site into `dist/` |
-| `npm run preview`                    | Serve the built site locally                    |
-| `npm test`                           | Unit tests (vitest)                             |
-| `npm run lint` / `npm run typecheck` | ESLint / TypeScript                             |
-| `npm run format`                     | Prettier                                        |
+| Script                               | What it does                                                             |
+| ------------------------------------ | ------------------------------------------------------------------------ |
+| `npm run build`                      | Type-check and build a static site into `dist/`                          |
+| `npm run preview`                    | Serve the built site locally                                             |
+| `npm test`                           | Unit tests (vitest)                                                      |
+| `npm run test:visual`                | Screenshot tests of fixed views (Playwright, uses your installed Chrome) |
+| `npm run test:visual:update`         | Re-record the screenshots after an intended visual change                |
+| `npm run lint` / `npm run typecheck` | ESLint / TypeScript                                                      |
+| `npm run format`                     | Prettier                                                                 |
 
 `dist/` is plain static files, so any static host works.
 
@@ -106,10 +108,12 @@ so moving a slider never re-renders the canvas component.
 
 ```
 src/
-  renderer/   Engine (render loop), passes, camera + input, glyph atlas, palettes, quality governor
+  renderer/   Engine (render loop), black hole scene pass, camera + input, quality governor
+    display/  DisplayPipeline: scene buffer, grid, glyph atlas, palettes, bloom/ASCII/CRT/readback
   shaders/    GLSL passes and shared includes
   state/      settings (persisted), stats, UI state, commands
   ui/         HUD, settings panel, help, boot screen, copy-as-text, overlays
+e2e/          Playwright screenshot tests (baselines in e2e/__screenshots__)
 tests/        geodesics, camera, glyphs, palettes, grid, settings, quality governor, text export
 ```
 

@@ -18,7 +18,8 @@ export default defineConfig({
   workers: 1,
   timeout: 120_000,
   expect: {
-    toHaveScreenshot: { maxDiffPixelRatio: 0.002, animations: 'disabled', timeout: 60_000 },
+    timeout: 60_000,
+    toHaveScreenshot: { maxDiffPixelRatio: 0.002, animations: 'disabled' },
   },
   use: {
     baseURL: `http://localhost:${PORT}`,

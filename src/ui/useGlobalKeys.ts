@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { settingsStore } from '@/state/settings';
 import { uiStore } from '@/state/ui';
+import { onRenderShortcut } from '@/ui/renderShortcuts';
 
 const isTextField = (t: EventTarget | null) =>
   t instanceof HTMLInputElement && t.type !== 'checkbox' && t.type !== 'range'
@@ -10,6 +11,7 @@ const isTextField = (t: EventTarget | null) =>
 /**
  * UI-level shortcuts: Tab or ` opens/closes settings, ? help, H the HUD, Esc closes overlays.
  * Inside the settings panel, Tab keeps its normal job of moving focus between controls.
+ * Also wires up the render shortcuts (see renderShortcuts.ts).
  */
 export function useGlobalKeys(): void {
   useEffect(() => {
@@ -36,6 +38,10 @@ export function useGlobalKeys(): void {
       }
     };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('keydown', onRenderShortcut);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('keydown', onRenderShortcut);
+    };
   }, []);
 }

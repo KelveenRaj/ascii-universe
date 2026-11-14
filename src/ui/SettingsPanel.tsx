@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useStore } from 'zustand';
-import { RAMP_IDS, RAMPS } from '@/renderer/glyphs/ramps';
-import { PALETTE_IDS, PALETTES } from '@/renderer/palette/palettes';
+import { RAMP_IDS, RAMPS } from '@/renderer/display/glyphs/ramps';
+import { PALETTE_IDS, PALETTES } from '@/renderer/display/palette/palettes';
 import { sendCommand } from '@/state/commands';
 import {
   NUMERIC_RANGES,

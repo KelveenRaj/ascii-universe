@@ -1,5 +1,5 @@
 import { useStore } from 'zustand';
-import { PALETTES } from '@/renderer/palette/palettes';
+import { PALETTES } from '@/renderer/display/palette/palettes';
 import { settingsStore } from '@/state/settings';
 import { statsStore } from '@/state/stats';
 import { uiStore } from '@/state/ui';

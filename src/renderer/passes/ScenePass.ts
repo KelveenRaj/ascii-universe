@@ -1,13 +1,13 @@
 import * as THREE from 'three';
 import blackholeFrag from '@/shaders/blackhole.frag';
 import type { Settings } from '@/state/settings';
+import type { SceneLayout } from '@/renderer/display/DisplayPipeline';
 import { FullscreenPass } from '@/renderer/FullscreenPass';
 
 type U<T> = THREE.IUniform<T>;
 
-/** Pass 1: ray-marches the black hole into a small half-float target (see blackhole.frag). */
+/** Pass 1: ray-marches the black hole into the display's scene buffer (see blackhole.frag). */
 export class ScenePass {
-  readonly target: THREE.WebGLRenderTarget;
   private readonly pass: FullscreenPass<{
     uCamPos: U<THREE.Vector3>;
     uCamBasis: U<THREE.Matrix3>;
@@ -23,14 +23,6 @@ export class ScenePass {
   }>;
 
   constructor(tanHalfFov: number) {
-    this.target = new THREE.WebGLRenderTarget(1, 1, {
-      type: THREE.HalfFloatType,
-      format: THREE.RGBAFormat,
-      minFilter: THREE.LinearFilter, // lets one tap average 2×2 texels when supersampling
-      magFilter: THREE.LinearFilter,
-      depthBuffer: false,
-      generateMipmaps: false,
-    });
     this.pass = new FullscreenPass(blackholeFrag, {
       uCamPos: { value: new THREE.Vector3() },
       uCamBasis: { value: new THREE.Matrix3() },
@@ -46,16 +38,8 @@ export class ScenePass {
     });
   }
 
-  get tanHalfFov(): number {
-    return this.pass.uniforms.uTanHalfFov.value;
-  }
-
-  /**
-   * @param aspect   width / height of the image the rays span
-   * @param starRows rows the vertical field of view is split into, for sizing stars
-   */
-  setSize(width: number, height: number, aspect: number, starRows: number): void {
-    this.target.setSize(width, height);
+  /** Called after the display re-lays out the scene buffer. */
+  setLayout({ aspect, starRows }: SceneLayout): void {
     const u = this.pass.uniforms;
     u.uAspect.value = aspect;
     u.uPixelAngle.value = (2 * u.uTanHalfFov.value) / starRows;
@@ -63,6 +47,7 @@ export class ScenePass {
 
   render(
     renderer: THREE.WebGLRenderer,
+    target: THREE.WebGLRenderTarget,
     camera: THREE.PerspectiveCamera,
     s: Settings,
     time: number,
@@ -77,11 +62,10 @@ export class ScenePass {
     u.uDiskOuter.value = s.diskOuter;
     u.uBeaming.value = s.beaming;
     u.uStarDensity.value = s.starDensity;
-    this.pass.render(renderer, this.target);
+    this.pass.render(renderer, target);
   }
 
   dispose(): void {
     this.pass.dispose();
-    this.target.dispose();
   }
 }

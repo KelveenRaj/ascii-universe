@@ -10,8 +10,8 @@ import {
   inkBox,
   PROCEDURAL_GLYPHS,
   unionBox,
-} from '@/renderer/glyphs/bitmaps';
-import { sortByCoverage, STAR_RAMP, uniqueChars } from '@/renderer/glyphs/ramps';
+} from '@/renderer/display/glyphs/bitmaps';
+import { sortByCoverage, STAR_RAMP, uniqueChars } from '@/renderer/display/glyphs/ramps';
 
 const FONT_FAMILY = '"Press Start 2P"';
 /** Glyphs are drawn this many times larger than their 8 px design size, then sampled per block. */

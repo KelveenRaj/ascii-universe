@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import readbackFrag from '@/shaders/readback.frag';
 import { FullscreenPass } from '@/renderer/FullscreenPass';
-import type { GlyphAtlas } from '@/renderer/glyphs/GlyphAtlas';
-import { glyphIndicesToText } from '@/renderer/textExport';
+import type { GlyphAtlas } from '@/renderer/display/glyphs/GlyphAtlas';
+import { glyphIndicesToText } from '@/renderer/display/textExport';
 
 type U<T> = THREE.IUniform<T>;
 
