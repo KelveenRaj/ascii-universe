@@ -1,0 +1,55 @@
+import { expect, test, type Page } from '@playwright/test';
+
+/**
+ * Locks the current look so refactors can prove they changed nothing. Each view uses the dev URL
+ * params (frozen disk time, fixed camera) plus fixed saved settings, so every frame is identical:
+ * fixed quality (auto quality would react to frame rate), no attract mode, no CRT flicker.
+ */
+const FIXED_SETTINGS = {
+  quality: 'high',
+  attractMode: false,
+  flicker: false,
+  glyphScale: 0,
+  columns: 0,
+  supersample: 2,
+};
+
+async function open(page: Page, query: string, settings: Record<string, unknown> = {}) {
+  await page.addInitScript(
+    (state) => {
+      window.localStorage.setItem('ascii-universe:settings', JSON.stringify({ state, version: 1 }));
+    },
+    { ...FIXED_SETTINGS, ...settings },
+  );
+  await page.goto(`/?t=12&${query}`);
+  // the boot screen goes away once the real glyph font has been drawn
+  await page.locator('#boot-screen').waitFor({ state: 'detached', timeout: 30_000 });
+  // hide the React UI so only the WebGL output is compared
+  await page.addStyleTag({ content: 'main > :not(canvas) { visibility: hidden !important; }' });
+  await page.waitForTimeout(500);
+}
+
+const VIEWS: Array<{ name: string; query: string; settings?: Record<string, unknown> }> = [
+  { name: 'interstellar', query: 'preset=interstellar' },
+  { name: 'eht', query: 'preset=eht' },
+  { name: 'top-down-no-crt', query: 'preset=topDown&crt=0' },
+  { name: 'close-up-blocks-green', query: 'preset=interstellar&dist=9&ramp=blocks&palette=green' },
+  { name: 'smooth', query: 'preset=interstellar&ascii=0&crt=0' },
+  { name: 'debug-redshift', query: 'preset=eht&view=redshift' },
+  { name: 'no-bloom-scale2', query: 'preset=interstellar&bloom=0&scale=2&mask=1' },
+];
+
+for (const view of VIEWS) {
+  test(`view: ${view.name}`, async ({ page }) => {
+    await open(page, view.query, view.settings);
+    await expect(page).toHaveScreenshot(`${view.name}.png`);
+  });
+}
+
+test('copy as text matches', async ({ page }) => {
+  await open(page, 'preset=interstellar&crt=0');
+  await page.keyboard.press('c');
+  const text = await page.locator('pre').first().textContent();
+  expect(text?.length ?? 0).toBeGreaterThan(1000);
+  expect(text).toMatchSnapshot('copy-as-text.txt');
+});
