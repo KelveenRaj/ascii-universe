@@ -15,14 +15,18 @@ export interface CameraPose {
   target: THREE.Vector3;
 }
 
-/** A named camera view. Angles in degrees, distance in the scene's units. */
-export interface CameraPreset {
-  id: string;
-  /** Short label for buttons and help, e.g. "EDGE-ON". */
-  label: string;
+/** A view of the origin. Angles in degrees, distance in the scene's units. */
+export interface CameraView {
   elevation: number;
   yaw: number;
   distance: number;
+}
+
+/** A named camera view. */
+export interface CameraPreset extends CameraView {
+  id: string;
+  /** Short label for buttons and help, e.g. "EDGE-ON". */
+  label: string;
 }
 
 export interface CameraLimits {
@@ -206,14 +210,39 @@ export class CameraController {
    */
   setPreset(id: string, instant = false): void {
     const p = this.presets.find((preset) => preset.id === id);
-    if (!p) return;
-    this.goal.yaw = this.current.yaw + wrapAngle(p.yaw * DEG - this.current.yaw);
-    this.goal.elevation = p.elevation * DEG;
-    this.goal.distance = p.distance;
+    if (p) this.setView(p, instant);
+  }
+
+  /** Eases to a view of the origin (shortest way round), re-centred and level. */
+  setView(view: CameraView, instant = false): void {
+    this.goal.yaw = this.current.yaw + wrapAngle(view.yaw * DEG - this.current.yaw);
+    this.goal.elevation = view.elevation * DEG;
+    this.goal.distance = view.distance;
     this.goal.roll = this.current.roll + wrapAngle(-this.current.roll);
     this.goal.target.set(0, 0, 0);
     this.notifyInput();
     if (instant) this.snap();
+  }
+
+  /**
+   * Jumps to looking at the origin from `position` (level, no easing), within the limits. Used to
+   * hand the camera back to the player from wherever something else had put it.
+   */
+  placeAt(position: THREE.Vector3): void {
+    const d = position.length();
+    if (d < 1e-6) return;
+    const { goal: g } = this;
+    g.distance = clamp(d, this._limits.minDistance, this._limits.maxDistance);
+    g.elevation = clamp(
+      Math.asin(clamp(position.y / d, -1, 1)),
+      -this._limits.maxElevation,
+      this._limits.maxElevation,
+    );
+    g.yaw = Math.atan2(position.x, position.z);
+    g.roll = 0;
+    g.target.set(0, 0, 0);
+    this.notifyInput();
+    this.snap();
   }
 
   reset(): void {

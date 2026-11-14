@@ -98,12 +98,17 @@ export function GameOverlay() {
           {hud?.hint}
         </div>
         <div className={styles.pads}>
-          <RepeatButton action="left" label="<" title="Aim left" />
-          <RepeatButton action="right" label=">" title="Aim right" />
-          <RepeatButton action="down" label="-" title="Slower" />
-          <RepeatButton action="up" label="+" title="Faster" />
+          <RepeatButton action="left" label="<" title="Left" />
+          <RepeatButton action="right" label=">" title="Right" />
+          <RepeatButton action="up" label="^" title="Up" />
+          <RepeatButton action="down" label="v" title="Down" />
+          <RepeatButton action="slower" label="-" title="Slower" />
+          <RepeatButton action="faster" label="+" title="Faster" />
           <PixelButton onClick={() => press('fire')} title="Launch / again (Space)">
             GO
+          </PixelButton>
+          <PixelButton onClick={() => press('view')} title="Change view (F)">
+            CAM
           </PixelButton>
           <PixelButton onClick={quit} title="Quit (Esc)">
             QUIT

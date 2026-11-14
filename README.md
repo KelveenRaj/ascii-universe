@@ -37,14 +37,23 @@ labels included. Things in the scene get a name tag and target brackets (**L** t
 ### Slingshot
 
 At Sgr A* there's a minigame: **PLAY > SLINGSHOT** in the navigator (or `#/sgr-a-star/game/slingshot`).
-Aim a probe past the black hole and bend its path as hard as you dare. The probe flies a real
+Aim a ship past the black hole in 3D and bend its path as hard as you dare. It flies a real
 Schwarzschild orbit, so skimming close bends it more and makes its clock fall behind the outside
-world (you see both clocks while it flies). Points come from the bend plus the seconds its clock
-lost. Dip below the photon sphere and it's gone. Your best score is saved in the browser.
+world (you see both clocks while it flies). Time slows down on screen during the close pass.
 
-![Slingshot, mid-flight](docs/slingshot.png)
+While it flies you ride along behind it (chase view), or switch to a wide view of the whole path,
+or a free camera you orbit yourself. The engine can speed up, slow down and steer, with limited
+fuel; a burn at the closest point does the most. The accretion disk is the hazard: crossing its
+plane through the disk burns the hull, and close in it's fatal, so pick a path that crosses
+outside it or threads the gap inside its inner edge. The aim preview marks disk hits with an X.
 
-Keys: **← →** aim · **↑ ↓** speed · **Space** launch · **Esc** quit. On touch there are buttons
+Points come from the bend plus the seconds the ship's clock lost, scaled by the hull you have
+left, plus a bonus for unused fuel. Your best score is saved in the browser.
+
+![Slingshot, chase view, mid-burn](docs/slingshot.png)
+
+Keys: **arrows** aim (and steer in flight) · **W / S** speed (burn in flight) · **Space** launch ·
+**F** change view · drag to look around while aiming · **Esc** quit. On touch there are buttons
 for all of them.
 
 ## Running it
@@ -155,15 +164,15 @@ src/
     scene/    SceneModule (the contract every place implements) and its ParamSchema
     game/     GameModule (the contract every minigame implements), GameHost, game input
   games/      one folder per minigame, plus registry.ts
-    slingshot/   fling a probe past Sgr A*
+    slingshot/   fling a ship past Sgr A* (game rules, ship sprites)
   scenes/     one folder per place, plus registry.ts
     milky-way/   the hub: galaxy shader, layout from the published numbers, camera presets, params
-    black-hole/  Sgr A*: ray-marching pass + shaders, light and orbit physics, camera presets, params
+    black-hole/  Sgr A*: ray-marching pass + shaders, light, orbit and 3D flight physics, camera presets, params
   shaders/    display passes and shared GLSL includes
   state/      settings (persisted), scene params (persisted per scene), navigation (URL hash), game HUD + high scores, stats, UI, commands
   ui/         HUD, info card, game overlay, navigator, settings panel, help, boot screen, copy-as-text, overlays
 e2e/          Playwright: screenshot tests (baselines in e2e/__screenshots__) and UI checks
-tests/        content (every fact cited), hash routes, warps, geodesics, orbits, slingshot, camera, scenes, glyphs, palettes, grid, settings, quality governor, text export
+tests/        content (every fact cited), hash routes, warps, geodesics, orbits, 3D flight, slingshot, camera, scenes, glyphs, palettes, grid, settings, quality governor, text export
 ```
 
 Conventions: imports are absolute from `src/` (`import { x } from '@/state/settings'`, enforced by
