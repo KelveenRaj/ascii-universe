@@ -11,7 +11,7 @@ import { DisplayPipeline } from '@/engine/display/DisplayPipeline';
 import { drawLabel } from '@/engine/display/labels';
 import { QualityGovernor } from '@/engine/quality/QualityGovernor';
 import type { SceneInstance } from '@/engine/scene/SceneModule';
-import { activeScene } from '@/state/scene';
+import { activeScene } from '@/state/navigation';
 import { sceneParamsStore } from '@/state/sceneParams';
 
 const FOV_DEG = 50;

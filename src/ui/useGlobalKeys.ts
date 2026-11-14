@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { navigationStore } from '@/state/navigation';
 import { settingsStore } from '@/state/settings';
 import { uiStore } from '@/state/ui';
 import { onRenderShortcut } from '@/ui/renderShortcuts';
@@ -18,12 +19,14 @@ export function useGlobalKeys(): void {
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey || isTextField(e.target)) return;
       const ui = uiStore.getState();
+      const nav = navigationStore.getState();
       const inPanel = e.target instanceof Element && e.target.closest('[data-ui]') !== null;
 
       if (e.key === 'Escape') {
         if (ui.textExport !== null) ui.setTextExport(null);
         else if (ui.helpOpen) ui.setHelpOpen(false);
         else if (ui.panelOpen) ui.setPanelOpen(false);
+        else if (nav.info) nav.setInfo(false);
         return;
       }
       if (e.repeat) return;
@@ -32,6 +35,8 @@ export function useGlobalKeys(): void {
         ui.setPanelOpen(!ui.panelOpen);
       } else if (e.key === '?') {
         ui.setHelpOpen(!ui.helpOpen);
+      } else if ((e.key === 'i' || e.key === 'I') && !inPanel) {
+        nav.setInfo(!nav.info);
       } else if ((e.key === 'h' || e.key === 'H') && !inPanel) {
         const s = settingsStore.getState();
         s.set('hud', !s.hud);

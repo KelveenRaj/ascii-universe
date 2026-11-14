@@ -9,7 +9,7 @@ export const SCENES = {
   [blackHoleScene.id]: blackHoleScene,
 } as const satisfies Record<string, SceneModule>;
 
-export type SceneId = keyof typeof SCENES;
+export type SceneId = Extract<keyof typeof SCENES, string>;
 
 export const DEFAULT_SCENE_ID: SceneId = blackHoleScene.id;
 

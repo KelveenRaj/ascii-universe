@@ -1,14 +1,14 @@
 import { expect, test, type Page } from '@playwright/test';
 
 /** Saves `state` as old-format (v1) settings before the app loads, then waits for boot. */
-async function openWith(page: Page, state: Record<string, unknown>) {
+async function openWith(page: Page, state: Record<string, unknown>, path = '/') {
   await page.addInitScript((saved) => {
     window.localStorage.setItem(
       'ascii-universe:settings',
       JSON.stringify({ state: saved, version: 1 }),
     );
   }, state);
-  await page.goto('/');
+  await page.goto(path);
   await page.locator('#boot-screen').waitFor({ state: 'detached', timeout: 30_000 });
 }
 
@@ -72,4 +72,44 @@ test('old v1 saved settings keep their black hole values', async ({ page }) => {
   expect(saved.settings.version).toBe(2);
   expect('diskSpeed' in saved.settings.state).toBe(false);
   expect(saved.params.state.values['black-hole'].diskSpeed).toBe(12.5);
+});
+
+/** The info card and its URL hash. */
+test.describe('info card', () => {
+  const settings = { quality: 'low', attractMode: false };
+
+  test('I opens it, Esc closes it, and the hash follows', async ({ page }) => {
+    await openWith(page, settings);
+    await expect(page).toHaveURL(/#\/sgr-a-star$/);
+    await page.keyboard.press('i');
+    const card = page.getByTestId('info-panel');
+    await expect(card).toContainText('SAGITTARIUS A*');
+    await expect(card).toContainText('4.30 MILLION SUNS');
+    await expect(
+      card.getByRole('link', { name: /Event Horizon Telescope Results/ }),
+    ).toHaveAttribute('href', /^https:\/\//);
+    await expect(page.getByLabel('Status')).toHaveCount(0); // the card takes the HUD's corner
+    await expect(page).toHaveURL(/#\/sgr-a-star\/info$/);
+
+    await page.keyboard.press('Escape');
+    await expect(card).toHaveCount(0);
+    await expect(page.getByLabel('Status')).toBeVisible();
+    await expect(page).toHaveURL(/#\/sgr-a-star$/);
+  });
+
+  test('a link to #/sgr-a-star/info opens it, and the INFO button closes it', async ({ page }) => {
+    await openWith(page, settings, '/#/sgr-a-star/info');
+    const card = page.getByTestId('info-panel');
+    await expect(card).toBeVisible();
+    await page.getByRole('button', { name: 'INFO', exact: true }).click();
+    await expect(card).toHaveCount(0);
+    await expect(page).toHaveURL(/#\/sgr-a-star$/);
+  });
+
+  test('editing the hash by hand works, and unknown places fall back home', async ({ page }) => {
+    await openWith(page, settings, '/#/nowhere');
+    await expect(page).toHaveURL(/#\/sgr-a-star$/);
+    await page.evaluate(() => (window.location.hash = '#/sgr-a-star/info'));
+    await expect(page.getByTestId('info-panel')).toBeVisible();
+  });
 });

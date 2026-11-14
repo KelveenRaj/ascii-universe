@@ -14,6 +14,11 @@ images, with optional CRT effects on top.
 | ------------------------------------------------------------ | ----------------------------------------------------------------- |
 | ![Near face-on view, like the EHT images](docs/eht-view.png) | ![Settings panel with the green palette](docs/settings-green.png) |
 
+Press **I** (or the INFO button) for the info card: what you are looking at, in numbers, with a
+source for every fact. It is part of the URL, so `#/sgr-a-star/info` links straight to it.
+
+![Info card for Sagittarius A*](docs/info-card.png)
+
 Press **C** to copy the current frame as plain text. It matches the screen character for character,
 labels included. Things in the scene get a name tag and target brackets (**L** toggles them).
 
@@ -52,7 +57,7 @@ Other scripts:
 | Roll       |                          | Twist       | Q / E         |
 | Reset view | Double-click             | Double-tap  | 0 / Home      |
 
-More keys: **1 2 3** view presets (edge-on, EHT, top-down) · **Space** pause the disk · **C** copy as
+More keys: **1 2 3** view presets (edge-on, EHT, top-down) · **I** info card · **Space** pause the disk · **C** copy as
 text · **[ ]** glyph size · **R** character set · **P** palette · **B** bloom · **T** CRT · **L** labels · **G** ASCII
 on/off · **V** debug views · **Tab** settings · **H** HUD · **?** help.
 
@@ -113,16 +118,17 @@ so moving a slider never re-renders the canvas component.
 
 ```
 src/
+  content/    facts and sources for every body (schema.ts, catalog.ts, bodies/), no rendering code
   engine/     space-agnostic: Engine (render loop), camera + input, quality governor
     display/  DisplayPipeline: scene buffer, grid, glyph atlas, palettes, bloom/ASCII/CRT/readback
     scene/    SceneModule (the contract every place implements) and its ParamSchema
   scenes/     one folder per place, plus registry.ts
     black-hole/  Sgr A*: ray-marching pass + shaders, geodesic physics, camera presets, params
   shaders/    display passes and shared GLSL includes
-  state/      settings (persisted), scene params (persisted per scene), active scene, stats, UI, commands
-  ui/         HUD, settings panel, help, boot screen, copy-as-text, overlays
+  state/      settings (persisted), scene params (persisted per scene), navigation (URL hash), stats, UI, commands
+  ui/         HUD, info card, settings panel, help, boot screen, copy-as-text, overlays
 e2e/          Playwright: screenshot tests (baselines in e2e/__screenshots__) and UI checks
-tests/        geodesics, camera, scenes, glyphs, palettes, grid, settings, quality governor, text export
+tests/        content (every fact cited), hash routes, geodesics, camera, scenes, glyphs, palettes, grid, settings, quality governor, text export
 ```
 
 Conventions: imports are absolute from `src/` (`import { x } from '@/state/settings'`, enforced by

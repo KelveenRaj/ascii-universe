@@ -45,6 +45,7 @@ const groups = (presets: SceneModule['camera']['presets']): Group[] => [
       ['B / T', 'BLOOM / CRT'],
       ['L', 'LABELS'],
       ['G / V', 'ASCII / DEBUG VIEW'],
+      ['I', 'INFO CARD'],
       ['TAB / H / ?', 'SETTINGS / HUD / HELP'],
     ],
   },

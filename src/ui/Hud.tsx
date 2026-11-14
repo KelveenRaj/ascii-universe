@@ -1,5 +1,6 @@
 import { useStore } from 'zustand';
 import { PALETTES } from '@/engine/display/palette/palettes';
+import { navigationStore } from '@/state/navigation';
 import { settingsStore } from '@/state/settings';
 import { statsStore } from '@/state/stats';
 import { uiStore } from '@/state/ui';
@@ -58,9 +59,17 @@ export function Hud() {
 export function TopBar() {
   const panelOpen = useStore(uiStore, (s) => s.panelOpen);
   const helpOpen = useStore(uiStore, (s) => s.helpOpen);
+  const infoOpen = useStore(navigationStore, (s) => s.info);
   const { setPanelOpen, setHelpOpen } = uiStore.getState();
   return (
     <div className={styles.topbar} data-ui>
+      <PixelButton
+        onClick={() => navigationStore.getState().setInfo(!infoOpen)}
+        title="Info card (I)"
+        aria-expanded={infoOpen}
+      >
+        INFO
+      </PixelButton>
       <PixelButton
         onClick={() => setHelpOpen(!helpOpen)}
         title="Controls (?)"
@@ -84,7 +93,7 @@ export function TopBar() {
 export function KeyHint() {
   return (
     <div className={styles.keyHint} aria-hidden="true">
-      TAB SETTINGS · ? HELP · C COPY TEXT · H HUD · DRAG ORBIT · WHEEL ZOOM
+      I INFO · TAB SETTINGS · ? HELP · C COPY TEXT · H HUD · DRAG ORBIT · WHEEL ZOOM
     </div>
   );
 }
