@@ -3,10 +3,8 @@ import { createStore } from 'zustand/vanilla';
 /** Renderer → UI telemetry. The engine writes this a few times per second, never per frame. */
 export interface Stats {
   fps: number;
-  /** Camera distance from the black hole, in Schwarzschild radii. */
-  distance: number;
-  /** Inclination: angle between the view direction and the disk normal, in degrees. */
-  inclination: number;
+  /** HUD rows from the active scene, e.g. [['DIST', '26.0 Rs'], ['INCL', '80°']]. */
+  sceneRows: Array<[string, string]>;
   sceneWidth: number;
   sceneHeight: number;
   /** Character grid (0 × 0 when ASCII is off). */
@@ -27,8 +25,7 @@ export interface Stats {
 
 export const statsStore = createStore<Stats>()(() => ({
   fps: 0,
-  distance: 0,
-  inclination: 0,
+  sceneRows: [],
   sceneWidth: 0,
   sceneHeight: 0,
   cols: 0,

@@ -1,8 +1,18 @@
 # ASCII Universe
 
-A real-time black hole, ray-traced on your GPU and drawn as retro ASCII art.
+An explorable universe, ray-traced on your GPU and drawn as retro ASCII art. You start outside the
+Milky Way and warp in to the places inside it. So far there are two: the galaxy itself and
+Sagittarius A\*, the black hole at its centre.
 
-Light rays are bent around a Schwarzschild black hole, so you see the far side of the accretion disk
+![The Milky Way hub](docs/milky-way.png)
+
+The galaxy is a barred spiral built from published numbers: a disk 100,000 light-years across, four
+arms, a 27,000-light-year bar, and the Sun 27,000 light-years out. Click the **SGR A\*** label (or
+**WARP** in the bottom-right corner) to warp to the centre, and **Backspace** to warp back out.
+Browser Back and Forward work too, since every place has its own URL (`#/milky-way`,
+`#/sgr-a-star`).
+
+At the black hole, light bends around the (non-spinning) hole, so you see the far side of the accretion disk
 wrapping over and under the shadow, a thin photon ring, and a lensed starfield. The disk is brighter
 on the side spinning toward you (Doppler beaming). All of it is rendered at "character resolution"
 and drawn with pixel-perfect 8×8 arcade glyphs in a palette inspired by the Event Horizon Telescope
@@ -14,9 +24,28 @@ images, with optional CRT effects on top.
 | ------------------------------------------------------------ | ----------------------------------------------------------------- |
 | ![Near face-on view, like the EHT images](docs/eht-view.png) | ![Settings panel with the green palette](docs/settings-green.png) |
 
-Press **C** to copy the current frame as plain text. It matches the screen character for character.
+Press **I** (or the INFO button) for the info card: what you are looking at, in numbers, with a
+source for every fact. It is part of the URL, so `#/sgr-a-star/info` links straight to it.
+
+![Info card for Sagittarius A*](docs/info-card.png)
+
+Press **C** to copy the current frame as plain text. It matches the screen character for character,
+labels included. Things in the scene get a name tag and target brackets (**L** toggles them).
 
 ![Copy as text dialog](docs/copy-as-text.png)
+
+### Slingshot
+
+At Sgr A* there's a minigame: **PLAY > SLINGSHOT** in the navigator (or `#/sgr-a-star/game/slingshot`).
+Aim a probe past the black hole and bend its path as hard as you dare. The probe flies a real
+Schwarzschild orbit, so skimming close bends it more and makes its clock fall behind the outside
+world (you see both clocks while it flies). Points come from the bend plus the seconds its clock
+lost. Dip below the photon sphere and it's gone. Your best score is saved in the browser.
+
+![Slingshot, mid-flight](docs/slingshot.png)
+
+Keys: **← →** aim · **↑ ↓** speed · **Space** launch · **Esc** quit. On touch there are buttons
+for all of them.
 
 ## Running it
 
@@ -29,13 +58,15 @@ npm run dev        # http://localhost:5173
 
 Other scripts:
 
-| Script                               | What it does                                    |
-| ------------------------------------ | ----------------------------------------------- |
-| `npm run build`                      | Type-check and build a static site into `dist/` |
-| `npm run preview`                    | Serve the built site locally                    |
-| `npm test`                           | Unit tests (vitest)                             |
-| `npm run lint` / `npm run typecheck` | ESLint / TypeScript                             |
-| `npm run format`                     | Prettier                                        |
+| Script                               | What it does                                                             |
+| ------------------------------------ | ------------------------------------------------------------------------ |
+| `npm run build`                      | Type-check and build a static site into `dist/`                          |
+| `npm run preview`                    | Serve the built site locally                                             |
+| `npm test`                           | Unit tests (vitest)                                                      |
+| `npm run test:visual`                | Screenshot tests of fixed views (Playwright, uses your installed Chrome) |
+| `npm run test:visual:update`         | Re-record the screenshots after an intended visual change                |
+| `npm run lint` / `npm run typecheck` | ESLint / TypeScript                                                      |
+| `npm run format`                     | Prettier                                                                 |
 
 `dist/` is plain static files, so any static host works.
 
@@ -49,8 +80,9 @@ Other scripts:
 | Roll       |                          | Twist       | Q / E         |
 | Reset view | Double-click             | Double-tap  | 0 / Home      |
 
-More keys: **1 2 3** view presets (edge-on, EHT, top-down) · **Space** pause the disk · **C** copy as
-text · **[ ]** glyph size · **R** character set · **P** palette · **B** bloom · **T** CRT · **G** ASCII
+More keys: **1 2 3** view presets (per place: overview, face-on, edge-on at the galaxy; edge-on, EHT, top-down at
+the black hole) · **I** info card · **Backspace** warp back out · **Space** pause · **C** copy as
+text · **[ ]** glyph size · **R** character set · **P** palette · **B** bloom · **T** CRT · **L** labels · **G** ASCII
 on/off · **V** debug views · **Tab** settings · **H** HUD · **?** help.
 
 After 30 seconds without input the camera slowly orbits on its own (attract mode). You can turn that
@@ -61,9 +93,10 @@ off in settings.
 Everything is in the settings panel (Tab, or the button top-right) and is saved in your browser:
 
 - **Display:** ASCII mode, glyph size (auto, 1–4×, or an exact column count), 2×2 supersampling,
-  character set (classic, dense, blocks, minimal), palette (EHT, afmhot, green phosphor, amber,
-  mono), exposure.
-- **Black hole:** quality, disk speed, Doppler beaming strength, star density, pause.
+  character set (classic, dense, blocks, minimal), palette (natural colours, or a single-colour
+  terminal look: afmhot, green phosphor, amber, mono), exposure.
+- **The current place:** quality and pause, plus its own knobs: spin, arm brightness, dust and stars
+  for the galaxy; disk speed, Doppler beaming and stars for the black hole. Saved per place.
 - **CRT:** curvature, scanlines, chromatic aberration, vignette, phosphor mask and flicker, each with
   its own strength, plus bloom.
 - **Camera:** presets, attract mode, HUD.
@@ -78,8 +111,11 @@ lower starting quality.
 
 Each frame runs a few full-screen shader passes (plain Three.js, no scene graph):
 
-1. **Scene** (`src/shaders/blackhole.frag`): one ray per character cell (2×2 with supersampling)
-   into a small float texture. Rays follow Schwarzschild null geodesics using the exact
+1. **Scene**: one ray per character cell (2×2 with supersampling) into a small float texture. The
+   galaxy (`src/scenes/milky-way/shaders/galaxy.frag`) marches each ray through a dusty, glowing
+   disk: bulge, bar, four logarithmic arms, clumpy star-forming regions and dust lanes. The black hole
+   (`src/scenes/black-hole/shaders/blackhole.frag`) traces rays
+   along Schwarzschild null geodesics using the exact
    acceleration `a = −1.5·h²·x/r⁵` (units where the Schwarzschild radius is 1), stepped with an
    adaptive leapfrog integrator. Each time a ray crosses the disk plane it picks up emission, up to
    three crossings, which gives the secondary image and the photon ring. Escaped rays sample the
@@ -89,15 +125,21 @@ Each frame runs a few full-screen shader passes (plain Three.js, no scene graph)
    pattern into thin rings.
 3. **Bloom:** a small blur at cell resolution for phosphor glow.
 4. **ASCII** (`src/shaders/ascii.frag`): brightness → tonemap → glyph from a ramp sorted by measured
-   ink coverage, coloured through a 256-entry palette texture. Glyphs come from Press Start 2P,
+   ink coverage, coloured through a palette texture with one 256-entry ramp per material (each scene
+   names its materials: the black hole has one, its EHT-style disk; the galaxy has old stars, young
+   stars and glowing gas). Glyphs come from Press Start 2P,
    rasterised to 1-bit at load time.
-5. **CRT** (`src/shaders/crt.frag`): curvature, aberration, scanlines aligned to glyph pixels,
+5. **Text layer** (`src/engine/display/TextLayer.ts`): labels and brackets (later game sprites) are
+   written into a small character grid on the CPU and drawn by the ASCII pass in place of the scene
+   glyph in those cells, using a text block appended to the glyph atlas. Warps draw their star
+   streaks (`- | / `) the same way, while the scene fades out, swaps, and fades back in.
+6. **CRT** (`src/shaders/crt.frag`): curvature, aberration, scanlines aligned to glyph pixels,
    mask, vignette, flicker. Skipped entirely when everything is off.
 
 Copy as text reads the glyph indices back through the same mapping code
 (`src/shaders/lib/glyphmap.glsl`), which is why it always matches the screen.
 
-The palette maps _brightness_ to colour, like the EHT images (their colours show radio brightness
+Each ramp maps _brightness_ to colour, like the EHT images (their colours show radio brightness
 temperature, not visible light). Simplifications: the hole doesn't spin (no Kerr), and the disk is
 infinitely thin.
 
@@ -106,15 +148,27 @@ so moving a slider never re-renders the canvas component.
 
 ```
 src/
-  renderer/   Engine (render loop), passes, camera + input, glyph atlas, palettes, quality governor
-  shaders/    GLSL passes and shared includes
-  state/      settings (persisted), stats, UI state, commands
-  ui/         HUD, settings panel, help, boot screen, copy-as-text, overlays
-tests/        geodesics, camera, glyphs, palettes, grid, settings, quality governor, text export
+  content/    facts and sources for every body (schema.ts, catalog.ts, bodies/), no rendering code
+  engine/     space-agnostic: Engine (render loop, scene switching), camera + input, quality governor
+    transition/  the warp effect
+    display/  DisplayPipeline: scene buffer, grid, glyph atlas, palettes, bloom/ASCII/CRT/readback
+    scene/    SceneModule (the contract every place implements) and its ParamSchema
+    game/     GameModule (the contract every minigame implements), GameHost, game input
+  games/      one folder per minigame, plus registry.ts
+    slingshot/   fling a probe past Sgr A*
+  scenes/     one folder per place, plus registry.ts
+    milky-way/   the hub: galaxy shader, layout from the published numbers, camera presets, params
+    black-hole/  Sgr A*: ray-marching pass + shaders, light and orbit physics, camera presets, params
+  shaders/    display passes and shared GLSL includes
+  state/      settings (persisted), scene params (persisted per scene), navigation (URL hash), game HUD + high scores, stats, UI, commands
+  ui/         HUD, info card, game overlay, navigator, settings panel, help, boot screen, copy-as-text, overlays
+e2e/          Playwright: screenshot tests (baselines in e2e/__screenshots__) and UI checks
+tests/        content (every fact cited), hash routes, warps, geodesics, orbits, slingshot, camera, scenes, glyphs, palettes, grid, settings, quality governor, text export
 ```
 
 Conventions: imports are absolute from `src/` (`import { x } from '@/state/settings'`, enforced by
 ESLint), and component styles are CSS Modules next to each component (`Hud.tsx` + `Hud.module.css`).
+Adding a place is mostly a scene folder and a content file, and a minigame is a folder in `src/games/`: see [docs/adding-a-scene.md](docs/adding-a-scene.md).
 `src/styles/global.css` only holds the theme variables and reset.
 
 ## Credits

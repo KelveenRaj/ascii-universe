@@ -1,10 +1,14 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { CAMERA_LIMITS, CameraController, VIEW_PRESETS } from '@/renderer/camera/CameraController';
+import { CameraController } from '@/engine/camera/CameraController';
+import { BLACK_HOLE_CAMERA } from '@/scenes/black-hole/camera';
+
+const CAMERA_LIMITS = BLACK_HOLE_CAMERA.limits;
+const INTERSTELLAR = BLACK_HOLE_CAMERA.presets[0];
 
 const TAN_HALF_FOV = Math.tan((50 * Math.PI) / 360);
 const DEG = Math.PI / 180;
-const make = () => new CameraController(TAN_HALF_FOV);
+const make = () => new CameraController(TAN_HALF_FOV, BLACK_HOLE_CAMERA);
 
 function settle(c: CameraController, seconds = 5, dt = 1 / 60) {
   for (let t = 0; t < seconds; t += dt) c.update(dt);
@@ -14,7 +18,7 @@ describe('CameraController', () => {
   it('starts at the Interstellar preset: ~80° inclination, looking at the hole', () => {
     const c = make();
     const pos = c.position(new THREE.Vector3());
-    expect(pos.length()).toBeCloseTo(VIEW_PRESETS.interstellar.distance, 6);
+    expect(pos.length()).toBeCloseTo(INTERSTELLAR.distance, 6);
     expect(pos.y / pos.length()).toBeCloseTo(Math.sin(10 * DEG), 6);
 
     const cam = new THREE.PerspectiveCamera();

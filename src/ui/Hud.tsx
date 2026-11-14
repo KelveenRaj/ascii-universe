@@ -1,5 +1,6 @@
 import { useStore } from 'zustand';
-import { PALETTES } from '@/renderer/palette/palettes';
+import { PALETTES } from '@/engine/display/palette/palettes';
+import { navigationStore } from '@/state/navigation';
 import { settingsStore } from '@/state/settings';
 import { statsStore } from '@/state/stats';
 import { uiStore } from '@/state/ui';
@@ -11,8 +12,7 @@ import styles from '@/ui/Hud.module.css';
 /** Game-style readout in the top-left corner. Re-renders ~4×/s at most (stats are throttled). */
 export function Hud() {
   const fps = useStore(statsStore, (s) => s.fps);
-  const distance = useStore(statsStore, (s) => s.distance);
-  const inclination = useStore(statsStore, (s) => s.inclination);
+  const sceneRows = useStore(statsStore, (s) => s.sceneRows);
   const cols = useStore(statsStore, (s) => s.cols);
   const rows = useStore(statsStore, (s) => s.rows);
   const steps = useStore(statsStore, (s) => s.steps);
@@ -25,8 +25,7 @@ export function Hud() {
 
   const rowsData: Array<[string, string]> = [
     ['FPS', String(fps)],
-    ['DIST', `${distance.toFixed(1)} Rs`],
-    ['INCL', `${inclination.toFixed(0)}°`],
+    ...sceneRows,
     ['GRID', ascii && cols > 0 ? `${cols}×${rows}` : 'SMOOTH'],
     ['STEPS', String(steps)],
     ['QUAL', qualityLabel],
@@ -60,9 +59,17 @@ export function Hud() {
 export function TopBar() {
   const panelOpen = useStore(uiStore, (s) => s.panelOpen);
   const helpOpen = useStore(uiStore, (s) => s.helpOpen);
+  const infoOpen = useStore(navigationStore, (s) => s.info);
   const { setPanelOpen, setHelpOpen } = uiStore.getState();
   return (
     <div className={styles.topbar} data-ui>
+      <PixelButton
+        onClick={() => navigationStore.getState().setInfo(!infoOpen)}
+        title="Info card (I)"
+        aria-expanded={infoOpen}
+      >
+        INFO
+      </PixelButton>
       <PixelButton
         onClick={() => setHelpOpen(!helpOpen)}
         title="Controls (?)"
@@ -86,7 +93,7 @@ export function TopBar() {
 export function KeyHint() {
   return (
     <div className={styles.keyHint} aria-hidden="true">
-      TAB SETTINGS · ? HELP · C COPY TEXT · H HUD · DRAG ORBIT · WHEEL ZOOM
+      I INFO · TAB SETTINGS · ? HELP · C COPY TEXT · H HUD · DRAG ORBIT · WHEEL ZOOM
     </div>
   );
 }

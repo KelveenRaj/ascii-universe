@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useStore } from 'zustand';
-import { RAMP_IDS, RAMPS } from '@/renderer/glyphs/ramps';
-import { PALETTE_IDS, PALETTES } from '@/renderer/palette/palettes';
+import { RAMP_IDS, RAMPS } from '@/engine/display/glyphs/ramps';
+import { PALETTE_IDS, PALETTES } from '@/engine/display/palette/palettes';
 import { sendCommand } from '@/state/commands';
 import {
   NUMERIC_RANGES,
@@ -11,6 +11,7 @@ import {
   type Quality,
   type Settings,
 } from '@/state/settings';
+import { sceneParamsStore } from '@/state/sceneParams';
 import { statsStore } from '@/state/stats';
 import { uiStore } from '@/state/ui';
 import commonStyles from '@/ui/common.module.css';
@@ -25,6 +26,8 @@ import {
 } from '@/ui/controls';
 import { cx } from '@/ui/cx';
 import styles from '@/ui/SettingsPanel.module.css';
+import { SceneParamControls } from '@/ui/SceneParamControls';
+import { useActiveScene } from '@/ui/useActiveScene';
 
 type SizeOption = 'auto' | '1' | '2' | '3' | '4' | 'custom';
 
@@ -103,6 +106,7 @@ function Effect(props: { label: string; flag: EffectKey; amount: AmountKey; disa
 
 export function SettingsPanel() {
   const open = useStore(uiStore, (s) => s.panelOpen);
+  const scene = useActiveScene();
   const panelRef = useRef<HTMLElement>(null);
 
   const [ascii, setAscii] = useSetting('ascii');
@@ -118,6 +122,7 @@ export function SettingsPanel() {
   const [bloomStrength, setBloomStrength] = useSetting('bloomStrength');
   const [attract, setAttract] = useSetting('attractMode');
   const [hud, setHud] = useSetting('hud');
+  const [labels, setLabels] = useSetting('labels');
 
   // move focus into the panel when it opens, so keyboard users land in it
   useEffect(() => {
@@ -196,17 +201,15 @@ export function SettingsPanel() {
           </PixelButton>
         </Section>
 
-        <Section title="BLACK HOLE">
+        <Section title={scene.title.toUpperCase()}>
           <Select
             label="QUALITY"
             value={quality}
             options={QUALITY_LEVELS.map((q) => ({ value: q, label: QUALITY_LABELS[q] }))}
             onChange={setQuality}
           />
-          <NumberSlider label="DISK SPEED" k="diskSpeed" />
-          <NumberSlider label="BEAMING" k="beaming" />
-          <NumberSlider label="STARS" k="starDensity" digits={2} />
-          <Toggle label="PAUSE DISK" checked={paused} onChange={setPaused} />
+          <SceneParamControls scene={scene} />
+          <Toggle label="PAUSE" checked={paused} onChange={setPaused} />
         </Section>
 
         <Section title="CRT">
@@ -231,21 +234,24 @@ export function SettingsPanel() {
 
         <Section title="CAMERA">
           <div className={styles.buttonRow}>
-            <PixelButton onClick={() => sendCommand({ type: 'preset', preset: 'interstellar' })}>
-              EDGE-ON
-            </PixelButton>
-            <PixelButton onClick={() => sendCommand({ type: 'preset', preset: 'eht' })}>
-              EHT
-            </PixelButton>
-            <PixelButton onClick={() => sendCommand({ type: 'preset', preset: 'topDown' })}>
-              TOP
-            </PixelButton>
+            {scene.camera.presets.map((p) => (
+              <PixelButton key={p.id} onClick={() => sendCommand({ type: 'preset', preset: p.id })}>
+                {p.label}
+              </PixelButton>
+            ))}
           </div>
           <Toggle label="ATTRACT MODE" checked={attract} onChange={setAttract} />
+          <Toggle label="LABELS" checked={labels} onChange={setLabels} />
           <Toggle label="SHOW HUD" checked={hud} onChange={setHud} />
         </Section>
 
-        <PixelButton wide onClick={() => settingsStore.getState().reset()}>
+        <PixelButton
+          wide
+          onClick={() => {
+            settingsStore.getState().reset();
+            sceneParamsStore.getState().resetAll();
+          }}
+        >
           RESET ALL SETTINGS
         </PixelButton>
       </div>

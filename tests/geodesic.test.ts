@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CRITICAL_IMPACT_PARAMETER, traceRay } from '@/renderer/physics/geodesic';
+import { CRITICAL_IMPACT_PARAMETER, traceRay } from '@/scenes/black-hole/geodesic';
 
 /** Fire a ray from far away along +z with impact parameter b (offset along x). */
 function fire(b: number, start = 1000, escapeRadius = 30) {

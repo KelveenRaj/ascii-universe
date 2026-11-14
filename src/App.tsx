@@ -1,10 +1,15 @@
+import { useEffect } from 'react';
 import { useStore } from 'zustand';
 import styles from '@/App.module.css';
-import { BlackHoleCanvas } from '@/renderer/BlackHoleCanvas';
+import { EngineCanvas } from '@/engine/EngineCanvas';
+import { navigationStore, startHashSync } from '@/state/navigation';
 import { settingsStore } from '@/state/settings';
 import { BootScreen } from '@/ui/BootScreen';
+import { GameOverlay } from '@/ui/GameOverlay';
 import { HelpOverlay } from '@/ui/HelpOverlay';
 import { Hud, KeyHint, TopBar } from '@/ui/Hud';
+import { InfoPanel } from '@/ui/InfoPanel';
+import { Navigator } from '@/ui/Navigator';
 import { SettingsPanel } from '@/ui/SettingsPanel';
 import { SignalLost } from '@/ui/SignalLost';
 import { TextExport } from '@/ui/TextExport';
@@ -14,13 +19,21 @@ import { usePaletteTheme } from '@/ui/usePaletteTheme';
 export default function App() {
   usePaletteTheme();
   useGlobalKeys();
+  useEffect(() => startHashSync(), []);
+  // the info card and a game's readout take the HUD's corner
   const hud = useStore(settingsStore, (s) => s.hud);
+  const info = useStore(navigationStore, (s) => s.info);
+  const game = useStore(navigationStore, (s) => s.game);
+  const explore = !info && !game;
 
   return (
     <main className={styles.app}>
-      <BlackHoleCanvas />
-      {hud && <Hud />}
-      {hud && <KeyHint />}
+      <EngineCanvas />
+      {hud && explore && <Hud />}
+      {hud && explore && <KeyHint />}
+      <InfoPanel />
+      <GameOverlay />
+      {!game && <Navigator />}
       <TopBar />
       <SettingsPanel />
       <HelpOverlay />
