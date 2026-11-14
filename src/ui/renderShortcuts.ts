@@ -3,6 +3,7 @@ import { RAMP_IDS } from '@/engine/display/glyphs/ramps';
 import { MAX_GLYPH_SCALE } from '@/engine/display/grid';
 import { PALETTE_IDS } from '@/engine/display/palette/palettes';
 import { sendCommand } from '@/state/commands';
+import { navigationStore } from '@/state/navigation';
 import { settingsStore } from '@/state/settings';
 import { statsStore } from '@/state/stats';
 
@@ -22,6 +23,8 @@ export function onRenderShortcut(e: KeyboardEvent): void {
       s.cycleDebugView();
       break;
     case ' ':
+      // in a game, Space is the game's
+      if (navigationStore.getState().game) break;
       e.preventDefault();
       s.togglePaused();
       break;

@@ -164,3 +164,50 @@ test.describe('hub and warps', () => {
     await expect(hud(page)).toContainText('Rs', { timeout: 30_000 });
   });
 });
+
+/** Slingshot at Sgr A*: start from the navigator, launch with Space, a round ends, Esc quits. */
+test.describe('slingshot', () => {
+  const settings = { quality: 'low', attractMode: false };
+  const panel = (page: Page) => page.getByTestId('game-panel');
+
+  test('PLAY starts the game, the HUD makes way for its readout', async ({ page }) => {
+    await openWith(page, settings, '/#/sgr-a-star');
+    await page.getByRole('button', { name: 'PLAY > SLINGSHOT' }).click();
+    await expect(page).toHaveURL(/#\/sgr-a-star\/game\/slingshot$/);
+    await expect(panel(page)).toContainText('ANGLE');
+    await expect(page.getByRole('status')).toContainText('SLINGSHOT');
+    await expect(page.getByLabel('Status')).toHaveCount(0);
+    await expect(page.getByLabel('Navigator')).toHaveCount(0);
+  });
+
+  test('a round plays out and Esc quits back to the scene', async ({ page }) => {
+    await openWith(page, settings, '/#/sgr-a-star/game/slingshot');
+    await expect(panel(page)).toContainText('SPEED');
+    await page.locator('canvas').click({ position: { x: 5, y: 5 } }); // focus the page
+    await page.keyboard.press('Space');
+    await expect(panel(page)).toContainText('PROBE');
+    // the default shot swings round and escapes; slow under software rendering
+    await expect(page.getByRole('status')).toContainText('SLINGSHOT!', { timeout: 90_000 });
+    await expect(page.getByRole('status')).toContainText('NEW BEST');
+
+    await page.keyboard.press('Space');
+    await expect(panel(page)).toContainText('ANGLE');
+    await expect(panel(page)).not.toContainText('BEST0');
+
+    await page.keyboard.press('Escape');
+    await expect(page).toHaveURL(/#\/sgr-a-star$/);
+    await expect(panel(page)).toHaveCount(0);
+    await expect(page.getByLabel('Status')).toContainText('Rs');
+  });
+
+  test('on-screen buttons aim and launch', async ({ page }) => {
+    await openWith(page, settings, '/#/sgr-a-star/game/slingshot');
+    await expect(panel(page)).toContainText('0.45 c');
+    await page.getByRole('button', { name: 'Faster' }).click();
+    await expect(panel(page)).toContainText('0.46 c');
+    await page.getByRole('button', { name: 'GO', exact: true }).click();
+    await expect(panel(page)).toContainText('PROBE');
+    await page.getByRole('button', { name: 'QUIT', exact: true }).click();
+    await expect(page).toHaveURL(/#\/sgr-a-star$/);
+  });
+});

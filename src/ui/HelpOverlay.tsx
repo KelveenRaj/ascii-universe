@@ -47,6 +47,7 @@ const groups = (presets: SceneModule['camera']['presets']): Group[] => [
       ['G / V', 'ASCII / DEBUG VIEW'],
       ['I', 'INFO CARD'],
       ['BACKSPACE', 'WARP BACK OUT'],
+      ['IN A GAME', 'ARROWS / WASD, SPACE · ESC QUITS'],
       ['TAB / H / ?', 'SETTINGS / HUD / HELP'],
     ],
   },

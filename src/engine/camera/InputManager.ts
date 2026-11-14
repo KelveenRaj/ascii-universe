@@ -85,6 +85,7 @@ export class InputManager {
   private mode: DragMode = 'none';
   private gesture = { cx: 0, cy: 0, dist: 1, angle: 0 };
   private lastTap = { time: 0, x: 0, y: 0 };
+  private enabled = true;
 
   constructor(el: HTMLElement, camera: CameraController) {
     this.el = el;
@@ -101,9 +102,17 @@ export class InputManager {
     window.addEventListener('blur', this.onBlur);
   }
 
+  /** Off while a game runs: the game gets the input instead, and the camera stays put. */
+  setEnabled(on: boolean): void {
+    this.enabled = on;
+    this.held.clear();
+    this.pointers.clear();
+    this.mode = 'none';
+  }
+
   /** Applies held keys. Call once per frame before CameraController.update(). */
   update(dt: number): void {
-    if (this.held.size === 0 || dt <= 0) return;
+    if (!this.enabled || this.held.size === 0 || dt <= 0) return;
     const has = (...codes: string[]) => codes.some((c) => this.held.has(c));
     const shift = has('ShiftLeft', 'ShiftRight');
     const ax = Number(has('KeyD', 'ArrowRight')) - Number(has('KeyA', 'ArrowLeft'));
@@ -125,7 +134,7 @@ export class InputManager {
   // ---- pointers -------------------------------------------------------------------------------
 
   private onPointerDown = (e: PointerEvent) => {
-    if (this.pointers.size >= 2) return; // ignore third+ fingers
+    if (!this.enabled || this.pointers.size >= 2) return; // ignore third+ fingers
     this.el.setPointerCapture(e.pointerId);
     this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, type: e.pointerType });
     this.camera.notifyInput();
@@ -198,6 +207,7 @@ export class InputManager {
 
   private onWheel = (e: WheelEvent) => {
     e.preventDefault();
+    if (!this.enabled) return;
     // normalise line/page deltas to pixels
     const scale = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? this.el.clientHeight : 1;
     // trackpad pinch arrives as ctrl+wheel with small deltas: give it more punch
@@ -207,12 +217,14 @@ export class InputManager {
 
   private onContextMenu = (e: Event) => e.preventDefault();
 
-  private onDoubleClick = () => this.camera.reset();
+  private onDoubleClick = () => {
+    if (this.enabled) this.camera.reset();
+  };
 
   // ---- keyboard -------------------------------------------------------------------------------
 
   private onKeyDown = (e: KeyboardEvent) => {
-    if (e.ctrlKey || e.metaKey || e.altKey || isTypingTarget(e.target)) return;
+    if (!this.enabled || e.ctrlKey || e.metaKey || e.altKey || isTypingTarget(e.target)) return;
     if (HELD_KEYS.has(e.code)) {
       this.held.add(e.code);
       this.camera.notifyInput();

@@ -65,6 +65,8 @@ const VIEWS: Array<{
     place: 'milky-way',
   },
   { name: 'hub-edge-on', query: 'preset=edgeOn', place: 'milky-way' },
+  // Slingshot's aim screen: the game picks the camera, so no preset here
+  { name: 'game-slingshot-aim', query: 'crt=0', place: 'sgr-a-star/game/slingshot' },
 ];
 
 for (const view of VIEWS) {

@@ -28,6 +28,7 @@ export function useGlobalKeys(): void {
         else if (ui.helpOpen) ui.setHelpOpen(false);
         else if (ui.panelOpen) ui.setPanelOpen(false);
         else if (nav.info) nav.setInfo(false);
+        else if (nav.game) nav.setGame(null);
         return;
       }
       if (e.repeat) return;
@@ -38,8 +39,10 @@ export function useGlobalKeys(): void {
         ui.setHelpOpen(!ui.helpOpen);
       } else if (e.key === 'Backspace' && !inPanel) {
         e.preventDefault();
-        nav.goUp();
-      } else if ((e.key === 'i' || e.key === 'I') && !inPanel) {
+        // in a game, Backspace only quits the game
+        if (nav.game) nav.setGame(null);
+        else nav.goUp();
+      } else if ((e.key === 'i' || e.key === 'I') && !inPanel && !nav.game) {
         nav.setInfo(!nav.info);
       } else if ((e.key === 'h' || e.key === 'H') && !inPanel) {
         const s = settingsStore.getState();

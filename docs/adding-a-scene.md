@@ -54,3 +54,16 @@ has no source, a source is unused, or a link isn't https.
 - `npm run test:visual` (add a view of the new place to `e2e/visual.e2e.ts`, then
   `npm run test:visual:update` once to record it)
 - Open `#/<id>` in the dev server.
+
+## Adding a minigame
+
+Games run on top of a place's scene, which keeps rendering as the backdrop.
+
+- Add `src/games/<id>/` with a `GameModule` (see `src/engine/game/Game.ts`): the `bodyId` it's
+  played at, the `cameraPreset` of that scene it's played from, and `create(ctx)`.
+- The instance gets `update(dt, input, view)` every frame (input is abstract actions: left, right,
+  up, down, fire), draws its sprites into the text layer in `draw`, and returns its readout,
+  message box and hint line from `hud()`. Report finished rounds with `ctx.submitScore`.
+- List it in `src/games/registry.ts`. The navigator then shows a PLAY button at that body and
+  `#/<body>/game/<id>` opens it.
+- Test the rules in `tests/` with a fake input (see `tests/slingshot.test.ts`).

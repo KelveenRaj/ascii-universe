@@ -10,7 +10,10 @@ import { applyDevQueryParams } from '@/engine/devParams';
 import { DisplayPipeline } from '@/engine/display/DisplayPipeline';
 import { cellAt } from '@/engine/display/grid';
 import { drawLabel, type LabelRect } from '@/engine/display/labels';
+import type { GameModule, GameView } from '@/engine/game/Game';
+import { GameHost } from '@/engine/game/GameHost';
 import { QualityGovernor } from '@/engine/quality/QualityGovernor';
+import { findGame } from '@/games/registry';
 import type { SceneInstance, SceneModule } from '@/engine/scene/SceneModule';
 import { Warp } from '@/engine/transition/Warp';
 import { activeBody, activeScene, navigationStore } from '@/state/navigation';
@@ -32,7 +35,8 @@ const CLICK_SLOP_PX = 5;
  *
  * The scene follows the navigation store: when you move to a body rendered by another scene, a
  * Warp plays and the scene is swapped at its midpoint, while the screen is dark. Clicking a label
- * that has a `target` moves there.
+ * that has a `target` moves there. A minigame in the route runs on top of the scene (GameHost):
+ * it gets the input and the text layer, and the camera is parked on the game's preset.
  */
 export class Engine {
   private readonly canvas: HTMLCanvasElement;
@@ -53,6 +57,8 @@ export class Engine {
   /** Clickable labels from the last frame, with the body each one warps to. */
   private labelHits: Array<{ rect: LabelRect; target: string }> = [];
   private pressAt: { x: number; y: number } | null = null;
+  private readonly games: GameHost;
+  private readonly gameView: GameView;
 
   private disposed = false;
   private contextLost = false;
@@ -85,6 +91,11 @@ export class Engine {
     this.controller = new CameraController(tanHalfFov, module.camera);
     this.controller.attractEnabled = settings.attractMode;
     this.input = new InputManager(canvas, this.controller);
+    this.gameView = { camera: this.camera, tanHalfFov, aspect: 16 / 9 };
+    this.games = new GameHost(
+      (game) => this.onGameStart(game),
+      () => this.onGameStop(),
+    );
 
     // Settings that need resources rebuilt are handled once on change, not checked every frame.
     this.unsubscribers.push(settingsStore.subscribe((s, prev) => this.onSettingsChange(s, prev)));
@@ -93,6 +104,7 @@ export class Engine {
         if (cmd.type === 'preset') this.controller.setPreset(cmd.preset);
         else if (cmd.type === 'resetView') this.controller.reset();
         else if (cmd.type === 'captureText') this.captureText();
+        else if (cmd.type === 'gameAction') this.games.input.tap(cmd.action);
       }),
     );
     // three.js itself keeps the context restorable and rebuilds its GL state on restore;
@@ -113,7 +125,9 @@ export class Engine {
 
   private onSettingsChange(s: SettingsState, prev: SettingsState): void {
     const relayout = this.display.onSettingsChange(s, prev);
-    if (s.attractMode !== prev.attractMode) this.controller.attractEnabled = s.attractMode;
+    if (s.attractMode !== prev.attractMode && !this.games.active) {
+      this.controller.attractEnabled = s.attractMode;
+    }
     if (s.quality !== prev.quality && s.quality === 'auto') this.governor.reset();
     if (relayout) this.resize();
   }
@@ -168,6 +182,30 @@ export class Engine {
     const target = this.labelTargetAt(e.clientX, e.clientY);
     if (target) navigationStore.getState().goTo(target);
   };
+
+  // ---- games --------------------------------------------------------------------------------
+
+  /** The game the route asks for, once its scene is on screen (never during a warp). */
+  private wantedGame(): GameModule | null {
+    const { game, bodyId } = navigationStore.getState();
+    const module = game ? findGame(game) : undefined;
+    if (!module || this.warp || module.bodyId !== bodyId || activeScene().id !== this.sceneId) {
+      return null;
+    }
+    return module;
+  }
+
+  /** Parks the camera on the game's view and hands it the input. */
+  private onGameStart(game: GameModule): void {
+    this.input.setEnabled(false);
+    this.controller.attractEnabled = false;
+    this.controller.setPreset(game.cameraPreset, true);
+  }
+
+  private onGameStop(): void {
+    this.input.setEnabled(true);
+    this.controller.attractEnabled = settingsStore.getState().attractMode;
+  }
 
   // ---- scene switching ----------------------------------------------------------------------
 
@@ -271,9 +309,15 @@ export class Engine {
 
     this.checkNavigation();
     this.advanceWarp(dt);
+    this.games.sync(this.wantedGame());
     this.input.update(dt);
     this.controller.update(dt);
     this.controller.apply(this.camera);
+    if (this.games.active) {
+      const grid = this.display.currentGrid;
+      this.gameView.aspect = grid ? grid.cols / grid.rows : this.drawSize.x / this.drawSize.y;
+      this.games.update(dt, this.gameView);
+    }
 
     const tier = this.autoTier;
     const steps = tier ? tier.steps : stepsFor(s.quality);
@@ -296,8 +340,8 @@ export class Engine {
   }
 
   /**
-   * Repaints the text layer: the warp while one runs, otherwise scene labels (ASCII final view
-   * only; the layer is left empty otherwise).
+   * Repaints the text layer: the warp while one runs, else the game, else scene labels (ASCII
+   * final view only; the layer is left empty otherwise).
    */
   private drawLabels(s: SettingsState): void {
     const text = this.display.text;
@@ -306,6 +350,10 @@ export class Engine {
     if (!DisplayPipeline.asciiActive(s)) return;
     if (this.warp) {
       this.warp.draw(text);
+      return;
+    }
+    if (this.games.active) {
+      this.games.draw(text, this.gameView);
       return;
     }
     if (!s.labels || !this.scene.labels) return;
@@ -341,6 +389,7 @@ export class Engine {
     this.canvas.removeEventListener('pointermove', this.onHover);
     this.canvas.removeEventListener('click', this.onClick);
     this.unsubscribers.forEach((off) => off());
+    this.games.dispose();
     this.input.dispose();
     this.scene.dispose();
     this.display.dispose();
