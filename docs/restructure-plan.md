@@ -8,14 +8,14 @@ Where it is now: one very polished black hole. The ASCII display pipeline (glyph
 palettes, copy as text, auto quality) is already general-purpose, but it's wired to the black hole
 in a few places, and those are what need untangling:
 
-| Coupling                                                                                                                         | Where                                                 |
-| -------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| Engine creates `ScenePass` (the black hole) directly and also owns keyboard shortcuts, dev URL params and settings wiring         | `src/renderer/Engine.ts` (432 lines)                  |
-| The scene texture's channels mean black-hole things (R = disk, G = stars or −1 for shadow, B = redshift), and the ASCII and readback code depends on that | `blackhole.frag`, `lib/glyphmap.glsl`, `ascii.frag`   |
-| One brightness→colour palette for the whole screen, so a blue planet next to an orange star isn't possible                       | `palette/lut.ts`, `ascii.frag`                        |
-| Settings mix display options (ramp, CRT, quality) with black-hole physics (disk radii, beaming)                                   | `state/settings.ts`, `ui/SettingsPanel.tsx`           |
-| Camera presets, limits (min distance 2.6 r_s) and the 1/2/3 keys are black-hole-specific                                         | `camera/CameraController.ts`, `camera/InputManager.ts` |
-| Units are Schwarzschild radii, which means nothing outside a black hole                                                           | everywhere                                            |
+| Coupling                                                                                                                                                  | Where                                                  |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| Engine creates `ScenePass` (the black hole) directly and also owns keyboard shortcuts, dev URL params and settings wiring                                 | `src/renderer/Engine.ts` (432 lines)                   |
+| The scene texture's channels mean black-hole things (R = disk, G = stars or −1 for shadow, B = redshift), and the ASCII and readback code depends on that | `blackhole.frag`, `lib/glyphmap.glsl`, `ascii.frag`    |
+| One brightness→colour palette for the whole screen, so a blue planet next to an orange star isn't possible                                                | `palette/lut.ts`, `ascii.frag`                         |
+| Settings mix display options (ramp, CRT, quality) with black-hole physics (disk radii, beaming)                                                           | `state/settings.ts`, `ui/SettingsPanel.tsx`            |
+| Camera presets, limits (min distance 2.6 r_s) and the 1/2/3 keys are black-hole-specific                                                                  | `camera/CameraController.ts`, `camera/InputManager.ts` |
+| Units are Schwarzschild radii, which means nothing outside a black hole                                                                                   | everywhere                                             |
 
 The idea is to split the code into an **engine** that knows nothing about space, **scenes** that
 each render one place, **content** that describes the places and their facts, and **modes**
@@ -60,14 +60,14 @@ follow the same split.
 ```ts
 interface SceneModule<P> {
   id: string;
-  params: ParamSchema<P>;             // drives the settings panel section + persistence + defaults
+  params: ParamSchema<P>; // drives the settings panel section + persistence + defaults
   camera: { presets; limits; units: string; defaultPose };
   create(ctx: SceneContext): SceneInstance<P>; // ctx = renderer, scene target size, shared textures
 }
 interface SceneInstance<P> {
   render(frame: FrameInfo, params: P): void; // writes the scene buffer
   setSize(w, h, aspect, starRows): void;
-  hudStats?(): Record<string, string>;        // e.g. inclination for the black hole
+  hudStats?(): Record<string, string>; // e.g. inclination for the black hole
   dispose(): void;
 }
 ```
@@ -78,12 +78,12 @@ chunk.
 **Scene buffer format.** One documented layout that every scene writes and the display pipeline
 reads, replacing the black-hole-specific channels:
 
-| Channel | Meaning                                                                                  |
-| ------- | ---------------------------------------------------------------------------------------- |
-| R       | luminance (HDR, linear), which picks the glyph                                           |
-| G       | material/palette row (0–255 / 255): which colour ramp this cell uses                     |
-| B       | flags: void (pure black, like the shadow), star point, hoverable/pickable id later       |
-| A       | free per-scene value for debug views (step heatmap, redshift…)                           |
+| Channel | Meaning                                                                            |
+| ------- | ---------------------------------------------------------------------------------- |
+| R       | luminance (HDR, linear), which picks the glyph                                     |
+| G       | material/palette row (0–255 / 255): which colour ramp this cell uses               |
+| B       | flags: void (pure black, like the shadow), star point, hoverable/pickable id later |
+| A       | free per-scene value for debug views (step heatmap, redshift…)                     |
 
 **Palette atlas.** The single 256×1 LUT becomes a 256×N texture: one row per material (EHT disk,
 G-type star, Earth ocean, Jupiter bands, nebula Hα…). The global palette switch (green phosphor,
