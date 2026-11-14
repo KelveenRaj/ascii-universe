@@ -32,8 +32,19 @@ describe('hash routes', () => {
 });
 
 describe('navigation store', () => {
-  it('derives the scene from the body', () => {
+  it('starts at the hub and derives the scene from the body', () => {
+    expect(navigationStore.getState().bodyId).toBe('milky-way');
+    expect(activeScene().id).toBe('milky-way');
+    navigationStore.getState().goTo('sgr-a-star');
     expect(activeScene().id).toBe('black-hole');
+  });
+
+  it('goes up to the parent, and nowhere from the top', () => {
+    navigationStore.getState().goTo('sgr-a-star');
+    navigationStore.getState().goUp();
+    expect(navigationStore.getState().bodyId).toBe('milky-way');
+    navigationStore.getState().goUp();
+    expect(navigationStore.getState().bodyId).toBe('milky-way');
   });
 
   it('ignores unknown bodies and closes the card when moving', () => {

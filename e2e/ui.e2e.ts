@@ -12,10 +12,10 @@ async function openWith(page: Page, state: Record<string, unknown>, path = '/') 
   await page.locator('#boot-screen').waitFor({ state: 'detached', timeout: 30_000 });
 }
 
-/** The React UI built from the active scene: HUD rows, panel sections, help text, preset keys. */
+/** The React UI built from the active scene (Sgr A*): HUD rows, panel sections, help, preset keys. */
 test.describe('scene UI', () => {
   test.beforeEach(async ({ page }) => {
-    await openWith(page, { quality: 'low', attractMode: false });
+    await openWith(page, { quality: 'low', attractMode: false }, '/#/sgr-a-star');
   });
 
   test('HUD shows the scene rows', async ({ page }) => {
@@ -59,7 +59,11 @@ test.describe('scene UI', () => {
 });
 
 test('old v1 saved settings keep their black hole values', async ({ page }) => {
-  await openWith(page, { quality: 'low', attractMode: false, diskSpeed: 12.5, starDensity: 0.85 });
+  await openWith(
+    page,
+    { quality: 'low', attractMode: false, diskSpeed: 12.5, starDensity: 0.85 },
+    '/#/sgr-a-star',
+  );
   await page.keyboard.press('Tab');
   const panel = page.getByLabel('Settings');
   await expect(panel.getByLabel('DISK SPEED')).toHaveValue('12.5');
@@ -79,7 +83,7 @@ test.describe('info card', () => {
   const settings = { quality: 'low', attractMode: false };
 
   test('I opens it, Esc closes it, and the hash follows', async ({ page }) => {
-    await openWith(page, settings);
+    await openWith(page, settings, '/#/sgr-a-star');
     await expect(page).toHaveURL(/#\/sgr-a-star$/);
     await page.keyboard.press('i');
     const card = page.getByTestId('info-panel');
@@ -108,8 +112,55 @@ test.describe('info card', () => {
 
   test('editing the hash by hand works, and unknown places fall back home', async ({ page }) => {
     await openWith(page, settings, '/#/nowhere');
-    await expect(page).toHaveURL(/#\/sgr-a-star$/);
+    await expect(page).toHaveURL(/#\/milky-way$/);
     await page.evaluate(() => (window.location.hash = '#/sgr-a-star/info'));
-    await expect(page.getByTestId('info-panel')).toBeVisible();
+    await expect(page.getByTestId('info-panel')).toContainText('SAGITTARIUS A*');
+  });
+});
+
+/** The Milky Way hub and warping between scenes. Warps are short here: reduced motion is on. */
+test.describe('hub and warps', () => {
+  const settings = { quality: 'low', attractMode: false };
+  const hud = (page: Page) => page.getByLabel('Status');
+
+  test('starts at the Milky Way, with its own HUD, card and settings', async ({ page }) => {
+    await openWith(page, settings);
+    await expect(page).toHaveURL(/#\/milky-way$/);
+    await expect(hud(page)).toContainText('KLY');
+    await page.keyboard.press('i');
+    await expect(page.getByTestId('info-panel')).toContainText('BARRED SPIRAL');
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Tab');
+    const panel = page.getByLabel('Settings');
+    await expect(panel).toContainText('MILKY WAY');
+    await expect(panel.getByText('SPIN', { exact: true })).toBeVisible();
+    await expect(panel.getByRole('button', { name: 'FACE-ON', exact: true })).toBeVisible();
+  });
+
+  test('WARP goes to Sgr A*, Backspace comes back, browser Back returns', async ({ page }) => {
+    await openWith(page, settings);
+    await page.getByRole('button', { name: 'WARP > SGR A*' }).click();
+    await expect(page).toHaveURL(/#\/sgr-a-star$/);
+    await expect(hud(page)).toContainText('Rs', { timeout: 30_000 });
+    await expect(page.getByLabel('Navigator')).toContainText('MILKY WAY');
+
+    await page.locator('canvas').click({ position: { x: 5, y: 5 } }); // focus the page
+    await page.keyboard.press('Backspace');
+    await expect(page).toHaveURL(/#\/milky-way$/);
+    await expect(hud(page)).toContainText('KLY', { timeout: 30_000 });
+
+    await page.goBack();
+    await expect(page).toHaveURL(/#\/sgr-a-star$/);
+    await expect(hud(page)).toContainText('Rs', { timeout: 30_000 });
+  });
+
+  test('clicking the SGR A* label warps there', async ({ page }) => {
+    await openWith(page, settings);
+    await expect(hud(page)).toContainText('KLY');
+    // Sgr A* is at the galactic centre, which the first view looks straight at
+    const box = (await page.locator('canvas').boundingBox())!;
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await expect(page).toHaveURL(/#\/sgr-a-star$/);
+    await expect(hud(page)).toContainText('Rs', { timeout: 30_000 });
   });
 });

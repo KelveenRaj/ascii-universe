@@ -8,6 +8,7 @@ uniform sampler2D uLut;
 uniform vec3 uStarTint;
 uniform vec3 uBackground;
 uniform float uExposure;
+uniform float uFade; // scene brightness during warps (0..1); text is never faded
 uniform int uDebugView; // 0 final, 1 intensity, 2 redshift, 3 steps
 
 in vec2 vUv;
@@ -43,5 +44,5 @@ void main() {
     ivec2 texel = clamp(ivec2(vUv * vec2(size)), ivec2(0), size - 1);
     col = lut(t, materialRow(texel)) + uStarTint * starT + uBackground * skyMask * (1.0 - t);
   }
-  fragColor = vec4(col, 1.0);
+  fragColor = vec4(col * uFade, 1.0);
 }

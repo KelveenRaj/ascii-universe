@@ -8,6 +8,7 @@ import { BootScreen } from '@/ui/BootScreen';
 import { HelpOverlay } from '@/ui/HelpOverlay';
 import { Hud, KeyHint, TopBar } from '@/ui/Hud';
 import { InfoPanel } from '@/ui/InfoPanel';
+import { Navigator } from '@/ui/Navigator';
 import { SettingsPanel } from '@/ui/SettingsPanel';
 import { SignalLost } from '@/ui/SignalLost';
 import { TextExport } from '@/ui/TextExport';
@@ -28,6 +29,7 @@ export default function App() {
       {hud && !info && <Hud />}
       {hud && !info && <KeyHint />}
       <InfoPanel />
+      <Navigator />
       <TopBar />
       <SettingsPanel />
       <HelpOverlay />

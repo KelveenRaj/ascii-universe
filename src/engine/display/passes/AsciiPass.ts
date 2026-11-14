@@ -34,6 +34,7 @@ export class AsciiPass {
     uText: U<THREE.Texture>;
     uTextBase: U<number>;
     uTextColors: U<THREE.Vector3[]>;
+    uFade: U<number>;
   }>;
 
   constructor(
@@ -61,6 +62,7 @@ export class AsciiPass {
       uText: { value: text },
       uTextBase: { value: atlas.textBase },
       uTextColors: { value: colors.text },
+      uFade: { value: 1 },
     });
   }
 
@@ -92,9 +94,11 @@ export class AsciiPass {
     exposure: number,
     bloom: THREE.Texture | null,
     bloomStrength: number,
+    fade = 1,
   ): void {
     const u = this.pass.uniforms;
     u.uExposure.value = exposure;
+    u.uFade.value = fade;
     u.uBloom.value = bloom;
     u.uBloomStrength.value = bloom ? bloomStrength : 0;
     this.pass.render(renderer, target);

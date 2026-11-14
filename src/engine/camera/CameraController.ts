@@ -75,14 +75,12 @@ export class CameraController {
   private readonly qTmp = new THREE.Quaternion();
   private readonly vTmp = new THREE.Vector3();
 
-  readonly presets: readonly CameraPreset[];
-  readonly limits: CameraLimits;
+  private _presets: readonly CameraPreset[] = [];
+  private _limits!: CameraLimits;
 
   constructor(tanHalfFov: number, setup: CameraSetup) {
-    if (setup.presets.length === 0) throw new Error('CameraSetup needs at least one preset');
     this.tanHalfFov = tanHalfFov;
-    this.presets = setup.presets;
-    this.limits = setup.limits;
+    this.applySetup(setup);
     const p = setup.presets[0];
     const pose = (): CameraPose => ({
       yaw: p.yaw * DEG,
@@ -93,6 +91,33 @@ export class CameraController {
     });
     this.current = pose();
     this.goal = pose();
+  }
+
+  get presets(): readonly CameraPreset[] {
+    return this._presets;
+  }
+
+  get limits(): CameraLimits {
+    return this._limits;
+  }
+
+  private applySetup(setup: CameraSetup): void {
+    if (setup.presets.length === 0) throw new Error('CameraSetup needs at least one preset');
+    this._presets = setup.presets;
+    this._limits = setup.limits;
+  }
+
+  /**
+   * Switches to another scene's views and limits and jumps to its first preset. With `arriveFrom`
+   * > 1 the camera starts that many times further out and eases in, like arriving from a warp.
+   */
+  setSetup(setup: CameraSetup, arriveFrom = 1): void {
+    this.applySetup(setup);
+    this.setPreset(setup.presets[0].id, true);
+    this.current.roll = this.goal.roll = 0;
+    if (arriveFrom > 1) {
+      this.current.distance = this.goal.distance * arriveFrom;
+    }
   }
 
   setFov(tanHalfFov: number): void {

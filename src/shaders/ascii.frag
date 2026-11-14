@@ -13,6 +13,7 @@ uniform vec2 uGrid;       // columns, rows
 uniform vec2 uGridOffset; // drawing-buffer pixels left/below the grid (it is centred)
 uniform float uCellPx;    // cell size in drawing-buffer pixels (8 × glyph scale)
 uniform float uExposure;
+uniform float uFade; // scene brightness during warps (0..1); text is never faded
 uniform float uRampLength;
 uniform float uStarBase;
 uniform float uStarLength;
@@ -67,5 +68,6 @@ void main() {
     vec3 glow = lut(mix(0.55, 1.0, b.r), material) * b.r + uStarTint * b.g * 0.25;
     col += glow * uBloomStrength * (1.0 - 0.5 * ink);
   }
+  if (!isText) col *= uFade;
   fragColor = vec4(col, 1.0);
 }

@@ -12,6 +12,16 @@ export interface SceneLabel {
    */
   radius?: number;
   style?: TextStyle;
+  /** Body id to warp to when the label is clicked. */
+  target?: string;
+}
+
+/** Cells a drawn label covers (inclusive, row 0 at the top), for click hit-testing. */
+export interface LabelRect {
+  col0: number;
+  row0: number;
+  col1: number;
+  row1: number;
 }
 
 export interface GridPoint {
@@ -49,27 +59,37 @@ export function projectToGrid(
   };
 }
 
-/** Draws one label into the text layer: ┌ ┐ └ ┘ around the object and its name top-right. */
+/**
+ * Draws one label into the text layer: ┌ ┐ └ ┘ around the object and its name top-right. Returns
+ * the cells it covers (brackets and name), or null if nothing was drawn.
+ */
 export function drawLabel(
   text: TextLayer,
   label: SceneLabel,
   camera: THREE.Camera,
   tanHalfFov: number,
-): void {
+): LabelRect | null {
   const p = projectToGrid(label.position, camera, tanHalfFov, text.cols, text.rows);
-  if (!p) return;
+  if (!p) return null;
   const style = label.style ?? 'bright';
   if (label.radius === undefined) {
-    text.put(p.col - Math.floor(label.text.length / 2), p.row, label.text, style);
-    return;
+    const col0 = p.col - Math.floor(label.text.length / 2);
+    text.put(col0, p.row, label.text, style);
+    return { col0, row0: p.row, col1: col0 + label.text.length - 1, row1: p.row };
   }
   // one cell of margin, and never so small that the corners touch
   const r = Math.max(2, Math.ceil(label.radius * p.cellsPerUnit) + 1);
   // when the object fills the view the brackets would sit off-screen; skip them
-  if (r > Math.max(text.cols, text.rows)) return;
+  if (r > Math.max(text.cols, text.rows)) return null;
   text.put(p.col - r, p.row - r, '┌', 'normal');
   text.put(p.col + r, p.row - r, '┐', 'normal');
   text.put(p.col - r, p.row + r, '└', 'normal');
   text.put(p.col + r, p.row + r, '┘', 'normal');
   text.put(p.col + r + 2, p.row - r, label.text, style);
+  return {
+    col0: p.col - r,
+    row0: p.row - r,
+    col1: p.col + r + 2 + label.text.length - 1,
+    row1: p.row + r,
+  };
 }

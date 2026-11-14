@@ -81,6 +81,8 @@ export class DisplayPipeline {
   private disposed = false;
   /** The real pixel font has loaded and the atlas has been rebuilt with it. */
   fontReady = false;
+  /** Scene brightness, 0..1 (warps fade the scene out and in). Text is never faded. */
+  fade = 1;
 
   /** The active scene's materials and sky (combined with the palette mode). */
   private sceneColors: SceneColors;
@@ -198,9 +200,9 @@ export class DisplayPipeline {
         glow = this.bloom.texture;
       }
       this.text.upload();
-      this.ascii.render(renderer, out, s.exposure, glow, s.bloomStrength);
+      this.ascii.render(renderer, out, s.exposure, glow, s.bloomStrength, this.fade);
     } else {
-      this.present.render(renderer, out, s.exposure, s.debugView);
+      this.present.render(renderer, out, s.exposure, s.debugView, this.fade);
     }
 
     if (crtOn) this.crt.render(renderer, fx, timeMs / 1000);
@@ -214,6 +216,17 @@ export class DisplayPipeline {
     const grid = this.grid ?? computeGrid(drawW, drawH, 0);
     const text = this.grid ? this.text.texture : null;
     return this.readback.read(renderer, grid.cols, grid.rows, this.atlas, exposure, text);
+  }
+
+  /** The character grid on screen, or null in smooth mode. */
+  get currentGrid(): CharGrid | null {
+    return this.grid;
+  }
+
+  /** A different scene is about to render: switch to its materials and sky. */
+  setScene(sceneColors: SceneColors, s: SettingsState): void {
+    this.sceneColors = sceneColors;
+    this.applyPalette(s);
   }
 
   private applyPalette(s: SettingsState): void {

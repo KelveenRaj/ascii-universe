@@ -10,7 +10,8 @@ const isTextField = (t: EventTarget | null) =>
     : t instanceof HTMLTextAreaElement || (t instanceof HTMLElement && t.isContentEditable);
 
 /**
- * UI-level shortcuts: Tab or ` opens/closes settings, ? help, H the HUD, Esc closes overlays.
+ * UI-level shortcuts: Tab or ` opens/closes settings, ? help, H the HUD, I the info card, Backspace
+ * warps back out, Esc closes overlays.
  * Inside the settings panel, Tab keeps its normal job of moving focus between controls.
  * Also wires up the render shortcuts (see renderShortcuts.ts).
  */
@@ -35,6 +36,9 @@ export function useGlobalKeys(): void {
         ui.setPanelOpen(!ui.panelOpen);
       } else if (e.key === '?') {
         ui.setHelpOpen(!ui.helpOpen);
+      } else if (e.key === 'Backspace' && !inPanel) {
+        e.preventDefault();
+        nav.goUp();
       } else if ((e.key === 'i' || e.key === 'I') && !inPanel) {
         nav.setInfo(!nav.info);
       } else if ((e.key === 'h' || e.key === 'H') && !inPanel) {

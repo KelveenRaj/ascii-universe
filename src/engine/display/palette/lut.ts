@@ -88,9 +88,19 @@ export function createPaletteTexture(ramps: readonly Ramp[]): THREE.DataTexture 
   return tex;
 }
 
-/** Rewrites the rows in place. The row count must match (a new scene gets a new texture). */
+/**
+ * Rewrites the rows. When the row count changes (a scene with a different number of materials),
+ * the GPU texture is freed and re-created on next use; the texture object stays the same, so
+ * passes holding it don't need rebinding.
+ */
 export function updatePaletteTexture(tex: THREE.DataTexture, ramps: readonly Ramp[]): void {
-  if (tex.image.height !== ramps.length) throw new Error('Palette row count changed');
-  (tex.image.data as Uint8Array).set(buildPaletteRows(ramps));
+  if (ramps.length === 0) throw new Error('A palette needs at least one ramp');
+  const rows = buildPaletteRows(ramps);
+  if (tex.image.height === ramps.length) {
+    (tex.image.data as Uint8Array).set(rows);
+  } else {
+    tex.image = { data: rows, width: LUT_SIZE, height: ramps.length };
+    tex.dispose();
+  }
   tex.needsUpdate = true;
 }

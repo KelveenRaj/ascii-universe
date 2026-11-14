@@ -62,3 +62,19 @@ export function computeGrid(
     offsetY: Math.floor((drawHeight - rows * cellPx) / 2),
   };
 }
+
+/**
+ * The cell under a drawing-buffer pixel (`x` from the left, `yTop` from the top), row 0 at the top
+ * like the text layer, or null outside the grid. Mirrors ascii.frag, which works bottom-up.
+ */
+export function cellAt(
+  grid: CharGrid,
+  drawHeight: number,
+  x: number,
+  yTop: number,
+): { col: number; row: number } | null {
+  const col = Math.floor((x - grid.offsetX) / grid.cellPx);
+  const rowFromBottom = Math.floor((drawHeight - yTop - grid.offsetY) / grid.cellPx);
+  if (col < 0 || col >= grid.cols || rowFromBottom < 0 || rowFromBottom >= grid.rows) return null;
+  return { col, row: grid.rows - 1 - rowFromBottom };
+}

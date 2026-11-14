@@ -7,6 +7,7 @@ export const sgrAStar: Body = {
   designation: 'SGR A*',
   kind: 'black-hole',
   sceneId: 'black-hole',
+  parent: 'milky-way',
   tagline: 'The supermassive black hole at the centre of the Milky Way.',
   summary: [
     'About four million times the mass of the Sun, packed into a region smaller than the orbit of Mercury. We know it is there because stars close to it whip around something invisible, on orbits that only make sense if that something is a black hole.',

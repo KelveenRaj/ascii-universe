@@ -9,8 +9,8 @@ import { getScene } from '@/scenes/registry';
  *   #/sgr-a-star        exploring Sagittarius A*
  *   #/sgr-a-star/info   …with its info card open
  *
- * The scene on screen follows from the body (body.sceneId). Switching bodies at runtime (warps)
- * arrives with the hub in M7; for now the engine builds the scene once at start.
+ * The scene on screen follows from the body (body.sceneId). Moving to a body in another scene
+ * is done by the Engine, which watches this store and warps whenever the scene has to change.
  */
 export interface Route {
   bodyId: string;
@@ -20,6 +20,8 @@ export interface Route {
 export interface NavigationState extends Route {
   setInfo: (open: boolean) => void;
   goTo: (bodyId: string) => void;
+  /** Back out to the parent body (Sgr A* → Milky Way). No-op at the top. */
+  goUp: () => void;
 }
 
 /** Hash → route. Anything unknown or malformed lands on the default body, card closed. Body ids
@@ -40,11 +42,15 @@ const initialRoute = (): Route =>
     ? { bodyId: DEFAULT_BODY_ID, info: false }
     : parseHash(window.location.hash);
 
-export const navigationStore = createStore<NavigationState>()((set) => ({
+export const navigationStore = createStore<NavigationState>()((set, get) => ({
   ...initialRoute(),
   setInfo: (info) => set({ info }),
   goTo: (bodyId) => {
     if (findBody(bodyId)) set({ bodyId, info: false });
+  },
+  goUp: () => {
+    const parent = getBody(get().bodyId).parent;
+    if (parent) get().goTo(parent);
   },
 }));
 

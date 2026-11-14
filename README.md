@@ -1,8 +1,18 @@
 # ASCII Universe
 
-A real-time black hole, ray-traced on your GPU and drawn as retro ASCII art.
+An explorable universe, ray-traced on your GPU and drawn as retro ASCII art. You start outside the
+Milky Way and warp in to the places inside it. So far there are two: the galaxy itself and
+Sagittarius A\*, the black hole at its centre.
 
-Light rays are bent around a Schwarzschild black hole, so you see the far side of the accretion disk
+![The Milky Way hub](docs/milky-way.png)
+
+The galaxy is a barred spiral built from published numbers: a disk 100,000 light-years across, four
+arms, a 27,000-light-year bar, and the Sun 27,000 light-years out. Click the **SGR A\*** label (or
+**WARP** in the bottom-right corner) to warp to the centre, and **Backspace** to warp back out.
+Browser Back and Forward work too, since every place has its own URL (`#/milky-way`,
+`#/sgr-a-star`).
+
+At the black hole, light bends around the (non-spinning) hole, so you see the far side of the accretion disk
 wrapping over and under the shadow, a thin photon ring, and a lensed starfield. The disk is brighter
 on the side spinning toward you (Doppler beaming). All of it is rendered at "character resolution"
 and drawn with pixel-perfect 8×8 arcade glyphs in a palette inspired by the Event Horizon Telescope
@@ -57,7 +67,8 @@ Other scripts:
 | Roll       |                          | Twist       | Q / E         |
 | Reset view | Double-click             | Double-tap  | 0 / Home      |
 
-More keys: **1 2 3** view presets (edge-on, EHT, top-down) · **I** info card · **Space** pause the disk · **C** copy as
+More keys: **1 2 3** view presets (per place: overview, face-on, edge-on at the galaxy; edge-on, EHT, top-down at
+the black hole) · **I** info card · **Backspace** warp back out · **Space** pause · **C** copy as
 text · **[ ]** glyph size · **R** character set · **P** palette · **B** bloom · **T** CRT · **L** labels · **G** ASCII
 on/off · **V** debug views · **Tab** settings · **H** HUD · **?** help.
 
@@ -71,7 +82,8 @@ Everything is in the settings panel (Tab, or the button top-right) and is saved 
 - **Display:** ASCII mode, glyph size (auto, 1–4×, or an exact column count), 2×2 supersampling,
   character set (classic, dense, blocks, minimal), palette (natural colours, or a single-colour
   terminal look: afmhot, green phosphor, amber, mono), exposure.
-- **Black hole:** quality, disk speed, Doppler beaming strength, star density, pause.
+- **The current place:** quality and pause, plus its own knobs: spin, arm brightness, dust and stars
+  for the galaxy; disk speed, Doppler beaming and stars for the black hole. Saved per place.
 - **CRT:** curvature, scanlines, chromatic aberration, vignette, phosphor mask and flicker, each with
   its own strength, plus bloom.
 - **Camera:** presets, attract mode, HUD.
@@ -86,8 +98,11 @@ lower starting quality.
 
 Each frame runs a few full-screen shader passes (plain Three.js, no scene graph):
 
-1. **Scene** (`src/scenes/black-hole/shaders/blackhole.frag`): one ray per character cell (2×2 with supersampling)
-   into a small float texture. Rays follow Schwarzschild null geodesics using the exact
+1. **Scene**: one ray per character cell (2×2 with supersampling) into a small float texture. The
+   galaxy (`src/scenes/milky-way/shaders/galaxy.frag`) marches each ray through a dusty, glowing
+   disk: bulge, bar, four logarithmic arms, clumpy star-forming regions and dust lanes. The black hole
+   (`src/scenes/black-hole/shaders/blackhole.frag`) traces rays
+   along Schwarzschild null geodesics using the exact
    acceleration `a = −1.5·h²·x/r⁵` (units where the Schwarzschild radius is 1), stepped with an
    adaptive leapfrog integrator. Each time a ray crosses the disk plane it picks up emission, up to
    three crossings, which gives the secondary image and the photon ring. Escaped rays sample the
@@ -98,11 +113,13 @@ Each frame runs a few full-screen shader passes (plain Three.js, no scene graph)
 3. **Bloom:** a small blur at cell resolution for phosphor glow.
 4. **ASCII** (`src/shaders/ascii.frag`): brightness → tonemap → glyph from a ramp sorted by measured
    ink coverage, coloured through a palette texture with one 256-entry ramp per material (each scene
-   names its materials; the black hole has one, its EHT-style disk). Glyphs come from Press Start 2P,
+   names its materials: the black hole has one, its EHT-style disk; the galaxy has old stars, young
+   stars and glowing gas). Glyphs come from Press Start 2P,
    rasterised to 1-bit at load time.
 5. **Text layer** (`src/engine/display/TextLayer.ts`): labels and brackets (later game sprites) are
    written into a small character grid on the CPU and drawn by the ASCII pass in place of the scene
-   glyph in those cells, using a text block appended to the glyph atlas.
+   glyph in those cells, using a text block appended to the glyph atlas. Warps draw their star
+   streaks (`- | / `) the same way, while the scene fades out, swaps, and fades back in.
 6. **CRT** (`src/shaders/crt.frag`): curvature, aberration, scanlines aligned to glyph pixels,
    mask, vignette, flicker. Skipped entirely when everything is off.
 
@@ -119,20 +136,23 @@ so moving a slider never re-renders the canvas component.
 ```
 src/
   content/    facts and sources for every body (schema.ts, catalog.ts, bodies/), no rendering code
-  engine/     space-agnostic: Engine (render loop), camera + input, quality governor
+  engine/     space-agnostic: Engine (render loop, scene switching), camera + input, quality governor
+    transition/  the warp effect
     display/  DisplayPipeline: scene buffer, grid, glyph atlas, palettes, bloom/ASCII/CRT/readback
     scene/    SceneModule (the contract every place implements) and its ParamSchema
   scenes/     one folder per place, plus registry.ts
+    milky-way/   the hub: galaxy shader, layout from the published numbers, camera presets, params
     black-hole/  Sgr A*: ray-marching pass + shaders, geodesic physics, camera presets, params
   shaders/    display passes and shared GLSL includes
   state/      settings (persisted), scene params (persisted per scene), navigation (URL hash), stats, UI, commands
-  ui/         HUD, info card, settings panel, help, boot screen, copy-as-text, overlays
+  ui/         HUD, info card, navigator, settings panel, help, boot screen, copy-as-text, overlays
 e2e/          Playwright: screenshot tests (baselines in e2e/__screenshots__) and UI checks
-tests/        content (every fact cited), hash routes, geodesics, camera, scenes, glyphs, palettes, grid, settings, quality governor, text export
+tests/        content (every fact cited), hash routes, warps, geodesics, camera, scenes, glyphs, palettes, grid, settings, quality governor, text export
 ```
 
 Conventions: imports are absolute from `src/` (`import { x } from '@/state/settings'`, enforced by
 ESLint), and component styles are CSS Modules next to each component (`Hud.tsx` + `Hud.module.css`).
+Adding a place is mostly a scene folder and a content file: see [docs/adding-a-scene.md](docs/adding-a-scene.md).
 `src/styles/global.css` only holds the theme variables and reset.
 
 ## Credits

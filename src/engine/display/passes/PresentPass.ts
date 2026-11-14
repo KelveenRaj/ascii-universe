@@ -15,6 +15,7 @@ export class PresentPass {
     uBackground: U<THREE.Vector3>;
     uExposure: U<number>;
     uDebugView: U<number>;
+    uFade: U<number>;
   }>;
 
   constructor(scene: THREE.Texture, lut: THREE.Texture, colors: PaletteColors) {
@@ -25,6 +26,7 @@ export class PresentPass {
       uBackground: { value: colors.background },
       uExposure: { value: 1 },
       uDebugView: { value: 0 },
+      uFade: { value: 1 },
     });
   }
 
@@ -33,9 +35,11 @@ export class PresentPass {
     target: THREE.WebGLRenderTarget | null,
     exposure: number,
     view: DebugView,
+    fade = 1,
   ): void {
     const u = this.pass.uniforms;
     u.uExposure.value = exposure;
+    u.uFade.value = fade;
     u.uDebugView.value = DEBUG_VIEWS.indexOf(view);
     this.pass.render(renderer, target);
   }

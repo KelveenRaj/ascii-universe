@@ -15,14 +15,20 @@ const FIXED_SETTINGS = {
   labels: false, // the original baselines; label views below turn them on
 };
 
-async function open(page: Page, query: string, settings: Record<string, unknown> = {}) {
+/** @param place body id for the hash, i.e. which scene the view is of */
+async function open(
+  page: Page,
+  query: string,
+  settings: Record<string, unknown> = {},
+  place = 'sgr-a-star',
+) {
   await page.addInitScript(
     (state) => {
       window.localStorage.setItem('ascii-universe:settings', JSON.stringify({ state, version: 1 }));
     },
     { ...FIXED_SETTINGS, ...settings },
   );
-  await page.goto(`/?t=12&${query}`);
+  await page.goto(`/?t=12&${query}#/${place}`);
   // the boot screen goes away once the real glyph font has been drawn
   await page.locator('#boot-screen').waitFor({ state: 'detached', timeout: 30_000 });
   // hide the React UI so only the WebGL output is compared
@@ -30,7 +36,12 @@ async function open(page: Page, query: string, settings: Record<string, unknown>
   await page.waitForTimeout(500);
 }
 
-const VIEWS: Array<{ name: string; query: string; settings?: Record<string, unknown> }> = [
+const VIEWS: Array<{
+  name: string;
+  query: string;
+  settings?: Record<string, unknown>;
+  place?: string;
+}> = [
   { name: 'interstellar', query: 'preset=interstellar' },
   { name: 'eht', query: 'preset=eht' },
   { name: 'top-down-no-crt', query: 'preset=topDown&crt=0' },
@@ -45,11 +56,20 @@ const VIEWS: Array<{ name: string; query: string; settings?: Record<string, unkn
     query: 'preset=eht&dist=90&palette=green',
     settings: { labels: true },
   },
+  // the Milky Way hub
+  { name: 'hub-overview', query: 'preset=overview', place: 'milky-way' },
+  {
+    name: 'hub-face-on-labels',
+    query: 'preset=faceOn&crt=0',
+    settings: { labels: true },
+    place: 'milky-way',
+  },
+  { name: 'hub-edge-on', query: 'preset=edgeOn', place: 'milky-way' },
 ];
 
 for (const view of VIEWS) {
   test(`view: ${view.name}`, async ({ page }) => {
-    await open(page, view.query, view.settings);
+    await open(page, view.query, view.settings, view.place);
     await expect(page).toHaveScreenshot(`${view.name}.png`);
   });
 }
