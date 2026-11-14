@@ -10,6 +10,8 @@ type U<T> = THREE.IUniform<T>;
 export interface PaletteColors {
   starTint: THREE.Vector3;
   background: THREE.Vector3;
+  /** Text layer colours: bright, normal, dim, accent (see TEXT_STYLES). */
+  text: THREE.Vector3[];
 }
 
 /** Pass 3: draws the scene as pixel-perfect glyphs, plus optional bloom glow (see ascii.frag). */
@@ -29,9 +31,18 @@ export class AsciiPass {
     uStarLength: U<number>;
     uStarTint: U<THREE.Vector3>;
     uBackground: U<THREE.Vector3>;
+    uText: U<THREE.Texture>;
+    uTextBase: U<number>;
+    uTextColors: U<THREE.Vector3[]>;
   }>;
 
-  constructor(scene: THREE.Texture, lut: THREE.Texture, atlas: GlyphAtlas, colors: PaletteColors) {
+  constructor(
+    scene: THREE.Texture,
+    lut: THREE.Texture,
+    atlas: GlyphAtlas,
+    colors: PaletteColors,
+    text: THREE.Texture,
+  ) {
     this.pass = new FullscreenPass(asciiFrag, {
       uScene: { value: scene },
       uLut: { value: lut },
@@ -47,6 +58,9 @@ export class AsciiPass {
       uStarLength: { value: atlas.starLength },
       uStarTint: { value: colors.starTint },
       uBackground: { value: colors.background },
+      uText: { value: text },
+      uTextBase: { value: atlas.textBase },
+      uTextColors: { value: colors.text },
     });
   }
 
@@ -56,6 +70,12 @@ export class AsciiPass {
     u.uRampLength.value = atlas.rampLength;
     u.uStarBase.value = atlas.starBase;
     u.uStarLength.value = atlas.starLength;
+    u.uTextBase.value = atlas.textBase;
+  }
+
+  /** The text layer texture is replaced when the grid size changes. */
+  setText(text: THREE.Texture): void {
+    this.pass.uniforms.uText.value = text;
   }
 
   setGrid(grid: CharGrid): void {

@@ -26,6 +26,8 @@ export class ReadbackPass {
     uRampLength: U<number>;
     uStarBase: U<number>;
     uStarLength: U<number>;
+    uText: U<THREE.Texture | null>;
+    uTextBase: U<number>;
   }>;
 
   constructor(scene: THREE.Texture) {
@@ -36,6 +38,8 @@ export class ReadbackPass {
       uRampLength: { value: 1 },
       uStarBase: { value: 1 },
       uStarLength: { value: 1 },
+      uText: { value: null },
+      uTextBase: { value: 0 },
     });
   }
 
@@ -45,6 +49,7 @@ export class ReadbackPass {
     rows: number,
     atlas: GlyphAtlas,
     exposure: number,
+    text: THREE.Texture | null,
   ): string {
     this.target.setSize(cols, rows);
     const u = this.pass.uniforms;
@@ -53,6 +58,8 @@ export class ReadbackPass {
     u.uRampLength.value = atlas.rampLength;
     u.uStarBase.value = atlas.starBase;
     u.uStarLength.value = atlas.starLength;
+    u.uText.value = text;
+    u.uTextBase.value = atlas.textBase;
     this.pass.render(renderer, this.target);
 
     const pixels = new Uint8Array(cols * rows * 4);

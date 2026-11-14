@@ -11,7 +11,7 @@ import {
   PROCEDURAL_GLYPHS,
   unionBox,
 } from '@/engine/display/glyphs/bitmaps';
-import { sortByCoverage, STAR_RAMP, uniqueChars } from '@/engine/display/glyphs/ramps';
+import { sortByCoverage, STAR_RAMP, TEXT_CHARS, uniqueChars } from '@/engine/display/glyphs/ramps';
 
 const FONT_FAMILY = '"Press Start 2P"';
 /** Glyphs are drawn this many times larger than their 8 px design size, then sampled per block. */
@@ -106,14 +106,16 @@ export class GlyphRasterizer {
 
 export interface GlyphAtlas {
   texture: THREE.DataTexture;
-  /** Ramp glyphs (sorted darkest first) followed by star glyphs. */
+  /** Ramp glyphs (sorted darkest first), then star glyphs, then the text block (TEXT_CHARS). */
   glyphs: string[];
   rampLength: number;
   starBase: number;
   starLength: number;
+  /** Atlas index of TEXT_CHARS[0]. */
+  textBase: number;
 }
 
-/** Builds a one-row atlas: [ramp glyphs…, star glyphs…], each 8×8, as an R8 texture. */
+/** Builds a one-row atlas: [ramp glyphs…, star glyphs…, text glyphs…], each 8×8, as an R8 texture. */
 export function buildGlyphAtlas(rasterizer: GlyphRasterizer, rampChars: string): GlyphAtlas {
   const raw = uniqueChars(rampChars);
   const fill = (ch: string) => {
@@ -122,7 +124,7 @@ export function buildGlyphAtlas(rasterizer: GlyphRasterizer, rampChars: string):
   };
   const ramp = sortByCoverage(raw, (ch) => coverage(rasterizer.bitmap(ch, fill(ch))));
   const stars = uniqueChars(STAR_RAMP);
-  const glyphs = [...ramp, ...stars];
+  const glyphs = [...ramp, ...stars, ...TEXT_CHARS];
 
   const width = glyphs.length * GLYPH_SIZE;
   const data = new Uint8Array(width * GLYPH_SIZE);
@@ -148,5 +150,6 @@ export function buildGlyphAtlas(rasterizer: GlyphRasterizer, rampChars: string):
     rampLength: ramp.length,
     starBase: ramp.length,
     starLength: stars.length,
+    textBase: ramp.length + stars.length,
   };
 }

@@ -42,6 +42,8 @@ export interface Settings {
   quality: Quality;
   /** Slow automatic orbit after 30 s without input, like an arcade attract screen. */
   attractMode: boolean;
+  /** Name tags and target brackets on things in the scene (ASCII mode). */
+  labels: boolean;
   /** Show the corner HUD. */
   hud: boolean;
 
@@ -86,6 +88,7 @@ const BASE_DEFAULTS: Settings = {
   exposure: 2.2,
   quality: 'auto',
   attractMode: true,
+  labels: true,
   hud: true,
   bloom: true,
   bloomStrength: 0.55,

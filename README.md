@@ -14,7 +14,8 @@ images, with optional CRT effects on top.
 | ------------------------------------------------------------ | ----------------------------------------------------------------- |
 | ![Near face-on view, like the EHT images](docs/eht-view.png) | ![Settings panel with the green palette](docs/settings-green.png) |
 
-Press **C** to copy the current frame as plain text. It matches the screen character for character.
+Press **C** to copy the current frame as plain text. It matches the screen character for character,
+labels included. Things in the scene get a name tag and target brackets (**L** toggles them).
 
 ![Copy as text dialog](docs/copy-as-text.png)
 
@@ -52,7 +53,7 @@ Other scripts:
 | Reset view | Double-click             | Double-tap  | 0 / Home      |
 
 More keys: **1 2 3** view presets (edge-on, EHT, top-down) · **Space** pause the disk · **C** copy as
-text · **[ ]** glyph size · **R** character set · **P** palette · **B** bloom · **T** CRT · **G** ASCII
+text · **[ ]** glyph size · **R** character set · **P** palette · **B** bloom · **T** CRT · **L** labels · **G** ASCII
 on/off · **V** debug views · **Tab** settings · **H** HUD · **?** help.
 
 After 30 seconds without input the camera slowly orbits on its own (attract mode). You can turn that
@@ -94,7 +95,10 @@ Each frame runs a few full-screen shader passes (plain Three.js, no scene graph)
    ink coverage, coloured through a palette texture with one 256-entry ramp per material (each scene
    names its materials; the black hole has one, its EHT-style disk). Glyphs come from Press Start 2P,
    rasterised to 1-bit at load time.
-5. **CRT** (`src/shaders/crt.frag`): curvature, aberration, scanlines aligned to glyph pixels,
+5. **Text layer** (`src/engine/display/TextLayer.ts`): labels and brackets (later game sprites) are
+   written into a small character grid on the CPU and drawn by the ASCII pass in place of the scene
+   glyph in those cells, using a text block appended to the glyph atlas.
+6. **CRT** (`src/shaders/crt.frag`): curvature, aberration, scanlines aligned to glyph pixels,
    mask, vignette, flicker. Skipped entirely when everything is off.
 
 Copy as text reads the glyph indices back through the same mapping code

@@ -1,6 +1,7 @@
 import type * as THREE from 'three';
 import type { CameraSetup } from '@/engine/camera/CameraController';
 import type { SceneLayout } from '@/engine/display/DisplayPipeline';
+import type { SceneLabel } from '@/engine/display/labels';
 import type { Material, Sky } from '@/engine/display/palette/palettes';
 import type { ParamSchema, ParamValue, ParamValues } from '@/engine/scene/params';
 import type { SettingsState } from '@/state/settings';
@@ -67,6 +68,8 @@ export interface SceneInstance<P = Record<string, ParamValue>> {
   /** Called whenever the display re-lays out the scene buffer (resize, grid change…). */
   setLayout(layout: SceneLayout): void;
   render(frame: SceneFrame<P>): void;
+  /** Name tags drawn in the character grid (ASCII mode, when labels are on). */
+  labels?(): SceneLabel[];
   /** Scene-specific HUD rows after FPS, e.g. [['DIST', '26.0 Rs'], ['INCL', '80°']]. */
   hudRows(camera: THREE.PerspectiveCamera): Array<[string, string]>;
   dispose(): void;

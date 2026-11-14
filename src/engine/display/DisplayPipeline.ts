@@ -9,7 +9,13 @@ import {
 } from '@/engine/display/glyphs/GlyphAtlas';
 import { RAMPS } from '@/engine/display/glyphs/ramps';
 import { autoGlyphScale, computeGrid, type CharGrid } from '@/engine/display/grid';
-import { createPaletteTexture, hexToRgb, updatePaletteTexture } from '@/engine/display/palette/lut';
+import {
+  createPaletteTexture,
+  hexToRgb,
+  sampleRamp,
+  updatePaletteTexture,
+} from '@/engine/display/palette/lut';
+import { TextLayer } from '@/engine/display/TextLayer';
 import {
   PALETTES,
   resolveColors,
@@ -28,6 +34,8 @@ const SMOOTH_SCALE = 0.6;
 const SMOOTH_MAX_HEIGHT = 600;
 /** In ASCII mode stars are sized a bit under one cell, so each lands in a single cell. */
 const STAR_CELL_FRACTION = 0.6;
+/** Text colours sampled from the main ramp: bright, normal, dim, accent (see TEXT_STYLES). */
+const TEXT_TONES = [0.97, 0.84, 0.5, 0.62];
 
 /** The part of a scene the display colours with: its materials (palette rows) and sky. */
 export interface SceneColors {
@@ -64,6 +72,8 @@ export class DisplayPipeline {
   private readonly present: PresentPass;
   private readonly crt = new CrtPass();
   private readonly readback: ReadbackPass;
+  /** Labels, brackets and (later) game sprites, drawn over the scene in ASCII mode. */
+  readonly text = new TextLayer();
 
   private rasterizer: GlyphRasterizer;
   private atlas: GlyphAtlas;
@@ -91,6 +101,7 @@ export class DisplayPipeline {
     this.colors = {
       starTint: new THREE.Vector3(...hexToRgb(sky.starTint)),
       background: new THREE.Vector3(...hexToRgb(sky.background)),
+      text: TEXT_TONES.map((t) => new THREE.Vector3(...sampleRamp(ramps[0], t))),
     };
 
     // Until the pixel font has loaded, glyphs fall back to dither blocks; swapped in a moment later.
@@ -98,7 +109,7 @@ export class DisplayPipeline {
     this.atlas = buildGlyphAtlas(this.rasterizer, RAMPS[settings.ramp].chars);
 
     const sceneTexture = this.sceneTarget.texture;
-    this.ascii = new AsciiPass(sceneTexture, this.lut, this.atlas, this.colors);
+    this.ascii = new AsciiPass(sceneTexture, this.lut, this.atlas, this.colors, this.text.texture);
     this.present = new PresentPass(sceneTexture, this.lut, this.colors);
     this.readback = new ReadbackPass(sceneTexture);
 
@@ -150,6 +161,8 @@ export class DisplayPipeline {
       const scale = boost ? autoGlyphScale(drawW) + boost : s.glyphScale;
       const grid = computeGrid(drawW, drawH, scale, s.columns);
       this.grid = grid;
+      this.text.resize(grid.cols, grid.rows);
+      this.ascii.setText(this.text.texture);
       this.sceneTarget.setSize(grid.cols * supersample, grid.rows * supersample);
       layout = {
         aspect: grid.cols / grid.rows, // cells are square
@@ -161,6 +174,7 @@ export class DisplayPipeline {
       statsStore.setState({ cols: grid.cols, rows: grid.rows, glyphScale: grid.scale });
     } else {
       this.grid = null;
+      this.text.clear(); // no grid, no text
       const sceneH = Math.max(90, Math.min(SMOOTH_MAX_HEIGHT, Math.round(cssH * SMOOTH_SCALE)));
       const sceneW = Math.max(160, Math.round((sceneH * cssW) / cssH));
       this.sceneTarget.setSize(sceneW, sceneH);
@@ -183,6 +197,7 @@ export class DisplayPipeline {
         this.bloom.render(renderer, this.sceneTarget.texture, s.exposure);
         glow = this.bloom.texture;
       }
+      this.text.upload();
       this.ascii.render(renderer, out, s.exposure, glow, s.bloomStrength);
     } else {
       this.present.render(renderer, out, s.exposure, s.debugView);
@@ -197,7 +212,8 @@ export class DisplayPipeline {
    */
   captureText(renderer: THREE.WebGLRenderer, drawW: number, drawH: number, exposure: number) {
     const grid = this.grid ?? computeGrid(drawW, drawH, 0);
-    return this.readback.read(renderer, grid.cols, grid.rows, this.atlas, exposure);
+    const text = this.grid ? this.text.texture : null;
+    return this.readback.read(renderer, grid.cols, grid.rows, this.atlas, exposure, text);
   }
 
   private applyPalette(s: SettingsState): void {
@@ -205,6 +221,7 @@ export class DisplayPipeline {
     updatePaletteTexture(this.lut, ramps);
     this.colors.starTint.set(...hexToRgb(sky.starTint));
     this.colors.background.set(...hexToRgb(sky.background));
+    this.colors.text.forEach((v, i) => v.set(...sampleRamp(ramps[0], TEXT_TONES[i])));
   }
 
   private rebuildAtlas(): void {
@@ -224,6 +241,7 @@ export class DisplayPipeline {
     this.readback.dispose();
     this.atlas.texture.dispose();
     this.lut.dispose();
+    this.text.dispose();
     this.sceneTarget.dispose();
   }
 }

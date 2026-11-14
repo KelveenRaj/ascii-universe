@@ -8,6 +8,7 @@ import { CameraController } from '@/engine/camera/CameraController';
 import { InputManager } from '@/engine/camera/InputManager';
 import { applyDevQueryParams } from '@/engine/devParams';
 import { DisplayPipeline } from '@/engine/display/DisplayPipeline';
+import { drawLabel } from '@/engine/display/labels';
 import { QualityGovernor } from '@/engine/quality/QualityGovernor';
 import type { SceneInstance } from '@/engine/scene/SceneModule';
 import { activeScene } from '@/state/scene';
@@ -36,6 +37,7 @@ export class Engine {
   private readonly display: DisplayPipeline;
   private readonly scene: SceneInstance;
   private readonly sceneId: string;
+  private readonly tanHalfFov: number;
 
   private disposed = false;
   private contextLost = false;
@@ -63,6 +65,7 @@ export class Engine {
     this.display = new DisplayPipeline(settings, module);
 
     const tanHalfFov = Math.tan((FOV_DEG * Math.PI) / 360);
+    this.tanHalfFov = tanHalfFov;
     this.scene = module.create({ tanHalfFov });
     this.controller = new CameraController(tanHalfFov, module.camera);
     this.controller.attractEnabled = settings.attractMode;
@@ -188,11 +191,22 @@ export class Engine {
       steps,
       frozenTime: this.frozenTime,
     });
+    this.drawLabels(s);
     this.display.render(this.renderer, s, timeMs);
 
     if (this.display.fontReady && !statsStore.getState().ready)
       statsStore.setState({ ready: true });
     this.updateStats(timeMs, steps, tier ? `AUTO·${tier.name}` : s.quality.toUpperCase());
+  }
+
+  /** Repaints scene labels into the text layer (ASCII final view only; the layer is cleared otherwise). */
+  private drawLabels(s: SettingsState): void {
+    const text = this.display.text;
+    text.clear();
+    if (!s.labels || !DisplayPipeline.asciiActive(s) || !this.scene.labels) return;
+    for (const label of this.scene.labels()) {
+      drawLabel(text, label, this.camera, this.tanHalfFov);
+    }
   }
 
   private updateStats(timeMs: number, steps: number, qualityLabel: string): void {

@@ -10,7 +10,7 @@ const cycle = <T>(list: readonly T[], current: T) =>
   list[(list.indexOf(current) + 1) % list.length];
 
 /**
- * Single-key render shortcuts (V, Space, G, R, P, B, T, C, [ ]). They only change settings or send
+ * Single-key render shortcuts (V, Space, G, R, P, B, T, L, C, [ ]). They only change settings or send
  * commands, so they don't need the engine. Camera keys live in InputManager; overlay keys (Tab, H,
  * ?, Esc) in useGlobalKeys.
  */
@@ -36,6 +36,9 @@ export function onRenderShortcut(e: KeyboardEvent): void {
       break;
     case 'b':
       s.set('bloom', !s.bloom);
+      break;
+    case 'l':
+      s.set('labels', !s.labels);
       break;
     case 't':
       s.set('crt', !s.crt);

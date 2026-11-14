@@ -18,11 +18,15 @@ uniform float uStarBase;
 uniform float uStarLength;
 uniform vec3 uStarTint;
 uniform vec3 uBackground;
+uniform sampler2D uText;     // text layer: labels, brackets, game sprites (see lib/text.glsl)
+uniform float uTextBase;     // atlas index of the first text glyph
+uniform vec3 uTextColors[4]; // bright, normal, dim, accent
 
 out vec4 fragColor;
 
 #include lib/glyphmap.glsl;
 #include lib/palette.glsl;
+#include lib/text.glsl;
 
 void main() {
   vec2 p = (gl_FragCoord.xy - uGridOffset) / uCellPx;
@@ -34,6 +38,10 @@ void main() {
 
   vec4 scene = texture(uScene, (cell + 0.5) / uGrid);
   vec2 glyph = glyphFor(scene);
+  // text replaces the scene glyph in its cell
+  vec2 text = textAt(ivec2(cell));
+  bool isText = text.x >= 0.0;
+  if (isText) glyph.x = text.x;
   // first scene texel of this cell (cells are 1×1 or 2×2 texels)
   ivec2 texelsPerCell = textureSize(uScene, 0) / ivec2(uGrid);
   float material = materialRow(ivec2(cell) * texelsPerCell);
@@ -47,6 +55,7 @@ void main() {
   vec3 inkColor = glyph.y == 2.0
     ? uStarTint * (0.55 + 0.45 * starTone(scene.g))
     : lut(pow(t, 0.85), material); // colour runs slightly ahead so dim glyphs stay readable
+  if (isText) inkColor = uTextColors[int(clamp(text.y, 0.0, 3.0))];
 
   // shadow cells (scene.g < 0) are pure black, sky cells get the palette background
   vec3 paper = scene.g < 0.0 ? vec3(0.0) : uBackground;

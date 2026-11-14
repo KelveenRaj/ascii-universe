@@ -12,6 +12,7 @@ const FIXED_SETTINGS = {
   glyphScale: 0,
   columns: 0,
   supersample: 2,
+  labels: false, // the original baselines; label views below turn them on
 };
 
 async function open(page: Page, query: string, settings: Record<string, unknown> = {}) {
@@ -37,6 +38,13 @@ const VIEWS: Array<{ name: string; query: string; settings?: Record<string, unkn
   { name: 'smooth', query: 'preset=interstellar&ascii=0&crt=0' },
   { name: 'debug-redshift', query: 'preset=eht&view=redshift' },
   { name: 'no-bloom-scale2', query: 'preset=interstellar&bloom=0&scale=2&mask=1' },
+  { name: 'labels-edge-on', query: 'preset=interstellar', settings: { labels: true } },
+  { name: 'labels-eht', query: 'preset=eht&crt=0', settings: { labels: true } },
+  {
+    name: 'labels-far-green',
+    query: 'preset=eht&dist=90&palette=green',
+    settings: { labels: true },
+  },
 ];
 
 for (const view of VIEWS) {
@@ -52,4 +60,12 @@ test('copy as text matches', async ({ page }) => {
   const text = await page.locator('pre').first().textContent();
   expect(text?.length ?? 0).toBeGreaterThan(1000);
   expect(text).toMatchSnapshot('copy-as-text.txt');
+});
+
+test('copy as text includes labels', async ({ page }) => {
+  await open(page, 'preset=eht&crt=0', { labels: true });
+  await page.keyboard.press('c');
+  const text = (await page.locator('pre').first().textContent()) ?? '';
+  expect(text).toContain('SGR A*');
+  for (const corner of ['┌', '┐', '└', '┘']) expect(text).toContain(corner);
 });

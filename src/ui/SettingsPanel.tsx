@@ -122,6 +122,7 @@ export function SettingsPanel() {
   const [bloomStrength, setBloomStrength] = useSetting('bloomStrength');
   const [attract, setAttract] = useSetting('attractMode');
   const [hud, setHud] = useSetting('hud');
+  const [labels, setLabels] = useSetting('labels');
 
   // move focus into the panel when it opens, so keyboard users land in it
   useEffect(() => {
@@ -240,6 +241,7 @@ export function SettingsPanel() {
             ))}
           </div>
           <Toggle label="ATTRACT MODE" checked={attract} onChange={setAttract} />
+          <Toggle label="LABELS" checked={labels} onChange={setLabels} />
           <Toggle label="SHOW HUD" checked={hud} onChange={setHud} />
         </Section>
 

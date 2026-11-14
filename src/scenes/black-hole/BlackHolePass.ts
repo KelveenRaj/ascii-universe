@@ -1,11 +1,15 @@
 import * as THREE from 'three';
 import type { SceneLayout } from '@/engine/display/DisplayPipeline';
+import type { SceneLabel } from '@/engine/display/labels';
 import { FullscreenPass } from '@/engine/FullscreenPass';
 import type { SceneFrame, SceneInstance } from '@/engine/scene/SceneModule';
+import { CRITICAL_IMPACT_PARAMETER } from '@/scenes/black-hole/geodesic';
 import type { BlackHoleParams } from '@/scenes/black-hole/params';
 import blackholeFrag from '@/scenes/black-hole/shaders/blackhole.frag';
 
 type U<T> = THREE.IUniform<T>;
+
+const ORIGIN = new THREE.Vector3();
 
 /**
  * Ray-marches the black hole into the display's scene buffer (see shaders/blackhole.frag), and
@@ -66,6 +70,11 @@ export class BlackHolePass implements SceneInstance<BlackHoleParams> {
     u.uStarDensity.value = p.starDensity;
     u.uRedshiftView.value = settings.debugView === 'redshift';
     this.pass.render(renderer, target);
+  }
+
+  /** Target brackets around the shadow (apparent radius = critical impact parameter). */
+  labels(): SceneLabel[] {
+    return [{ position: ORIGIN, text: 'SGR A*', radius: CRITICAL_IMPACT_PARAMETER }];
   }
 
   hudRows(camera: THREE.PerspectiveCamera): Array<[string, string]> {

@@ -26,6 +26,24 @@ export function ditherBitmap(fill: number): Bitmap {
   return bm;
 }
 
+/**
+ * A 2-pixel-thick corner bracket (the font has no box-drawing characters). `right` / `bottom` pick
+ * which edges carry the stroke: ┌ is (false, false), ┘ is (true, true).
+ */
+function cornerBitmap(right: boolean, bottom: boolean): Bitmap {
+  const bm = emptyBitmap();
+  const edgeX = right ? [GLYPH_SIZE - 2, GLYPH_SIZE - 1] : [0, 1];
+  const edgeY = bottom ? [GLYPH_SIZE - 2, GLYPH_SIZE - 1] : [0, 1];
+  for (let y = 0; y < GLYPH_SIZE; y++) {
+    for (let x = 0; x < GLYPH_SIZE; x++) {
+      const armX = edgeY.includes(y) && (right ? x >= 2 : x < GLYPH_SIZE - 2);
+      const armY = edgeX.includes(x) && (bottom ? y >= 2 : y < GLYPH_SIZE - 2);
+      bm[y * GLYPH_SIZE + x] = armX || armY ? 1 : 0;
+    }
+  }
+  return bm;
+}
+
 /** Block characters are drawn procedurally so they are pixel-perfect whatever the font has. */
 export const PROCEDURAL_GLYPHS: Record<string, () => Bitmap> = {
   ' ': emptyBitmap,
@@ -33,6 +51,10 @@ export const PROCEDURAL_GLYPHS: Record<string, () => Bitmap> = {
   '▒': () => ditherBitmap(0.5),
   '▓': () => ditherBitmap(0.75),
   '█': () => ditherBitmap(1),
+  '┌': () => cornerBitmap(false, false),
+  '┐': () => cornerBitmap(true, false),
+  '└': () => cornerBitmap(false, true),
+  '┘': () => cornerBitmap(true, true),
 };
 
 export interface Box {

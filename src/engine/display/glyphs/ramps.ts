@@ -24,6 +24,19 @@ export const RAMP_IDS = Object.keys(RAMPS) as RampId[];
 /** Stars get their own tiny ramp so they read as points, not as dim disk gas. */
 export const STAR_RAMP = '.+*';
 
+/**
+ * Characters the text layer can draw (labels, HUD-in-the-grid, game sprites): printable ASCII,
+ * then corner brackets for target markers. Code 0 in the text layer means "no text"; code i + 1 is
+ * TEXT_CHARS[i].
+ */
+export const TEXT_CHARS = [
+  ...Array.from({ length: 95 }, (_, i) => String.fromCharCode(32 + i)),
+  '┌',
+  '┐',
+  '└',
+  '┘',
+];
+
 /** Unique characters in order of first appearance. */
 export function uniqueChars(s: string): string[] {
   return [...new Set([...s])];

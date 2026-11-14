@@ -43,6 +43,7 @@ const groups = (presets: SceneModule['camera']['presets']): Group[] => [
       ['C', 'COPY AS TEXT'],
       ['R / P', 'CHARACTERS / PALETTE'],
       ['B / T', 'BLOOM / CRT'],
+      ['L', 'LABELS'],
       ['G / V', 'ASCII / DEBUG VIEW'],
       ['TAB / H / ?', 'SETTINGS / HUD / HELP'],
     ],
