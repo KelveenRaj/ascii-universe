@@ -4,21 +4,23 @@ import { AUTO_START_TIER, MAX_PIXEL_RATIO } from '@/state/deviceTier';
 import { settingsStore, stepsFor, type SettingsState } from '@/state/settings';
 import { statsStore } from '@/state/stats';
 import { uiStore } from '@/state/ui';
-import { CameraController } from '@/renderer/camera/CameraController';
-import { InputManager } from '@/renderer/camera/InputManager';
-import { applyDevQueryParams } from '@/renderer/devParams';
-import { DisplayPipeline } from '@/renderer/display/DisplayPipeline';
-import { ScenePass } from '@/renderer/passes/ScenePass';
-import { QualityGovernor } from '@/renderer/QualityGovernor';
+import { CameraController } from '@/engine/camera/CameraController';
+import { InputManager } from '@/engine/camera/InputManager';
+import { applyDevQueryParams } from '@/engine/devParams';
+import { DisplayPipeline } from '@/engine/display/DisplayPipeline';
+import { QualityGovernor } from '@/engine/quality/QualityGovernor';
+import type { SceneInstance } from '@/engine/scene/SceneModule';
+import { activeScene } from '@/state/scene';
 
 const FOV_DEG = 50;
 const STATS_INTERVAL_MS = 250;
 
 /**
  * Owns the WebGL renderer and the render loop. Plain TypeScript: React only creates and disposes it
- * (see BlackHoleCanvas), it never drives frames.
+ * (see EngineCanvas), it never drives frames.
  *
- * Each frame: camera → scene pass into the display's scene buffer → DisplayPipeline to the screen.
+ * Each frame: camera → active scene renders into the display's scene buffer → DisplayPipeline to
+ * the screen. The scene is anything implementing SceneModule (see engine/scene/SceneModule.ts).
  */
 export class Engine {
   private readonly canvas: HTMLCanvasElement;
@@ -31,13 +33,12 @@ export class Engine {
   private readonly unsubscribers: Array<() => void> = [];
   private readonly governor = new QualityGovernor(AUTO_START_TIER);
   private readonly display: DisplayPipeline;
-  private readonly scene: ScenePass;
+  private readonly scene: SceneInstance;
 
   private disposed = false;
   private contextLost = false;
   private lastFrameMs = -1;
-  private diskTime = 0;
-  /** Dev-only: freeze the disk clock at a given time (for reproducible screenshots). */
+  /** Dev-only: freeze the scene clock at a given time (for reproducible screenshots). */
   private frozenTime: number | null = null;
   private fpsFrames = 0;
   private fpsWindowStart = 0;
@@ -58,8 +59,9 @@ export class Engine {
     this.display = new DisplayPipeline(settings);
 
     const tanHalfFov = Math.tan((FOV_DEG * Math.PI) / 360);
-    this.scene = new ScenePass(tanHalfFov);
-    this.controller = new CameraController(tanHalfFov);
+    const module = activeScene();
+    this.scene = module.create({ tanHalfFov });
+    this.controller = new CameraController(tanHalfFov, module.camera);
     this.controller.attractEnabled = settings.attractMode;
     this.input = new InputManager(canvas, this.controller);
 
@@ -167,15 +169,21 @@ export class Engine {
       }
     }
 
-    if (!s.paused) this.diskTime += dt * s.diskSpeed;
     this.input.update(dt);
     this.controller.update(dt);
     this.controller.apply(this.camera);
 
     const tier = this.autoTier;
     const steps = tier ? tier.steps : stepsFor(s.quality);
-    const time = this.frozenTime ?? this.diskTime;
-    this.scene.render(this.renderer, this.display.sceneTarget, this.camera, s, time, steps);
+    this.scene.render({
+      renderer: this.renderer,
+      target: this.display.sceneTarget,
+      camera: this.camera,
+      settings: s,
+      dt,
+      steps,
+      frozenTime: this.frozenTime,
+    });
     this.display.render(this.renderer, s, timeMs);
 
     if (this.display.fontReady && !statsStore.getState().ready)
@@ -187,12 +195,9 @@ export class Engine {
     this.fpsFrames++;
     const elapsed = timeMs - this.fpsWindowStart;
     if (elapsed < STATS_INTERVAL_MS) return;
-    const pos = this.camera.position;
-    const distance = pos.length();
     statsStore.setState({
       fps: Math.round((this.fpsFrames * 1000) / elapsed),
-      distance,
-      inclination: (Math.acos(Math.abs(pos.y) / Math.max(distance, 1e-6)) * 180) / Math.PI,
+      sceneRows: this.scene.hudRows(this.camera),
       attract: this.controller.attractActive,
       steps,
       qualityLabel,

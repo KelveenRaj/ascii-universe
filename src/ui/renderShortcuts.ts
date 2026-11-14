@@ -1,7 +1,7 @@
-import { isTypingTarget } from '@/renderer/camera/InputManager';
-import { RAMP_IDS } from '@/renderer/display/glyphs/ramps';
-import { MAX_GLYPH_SCALE } from '@/renderer/display/grid';
-import { PALETTE_IDS } from '@/renderer/display/palette/palettes';
+import { isTypingTarget } from '@/engine/camera/InputManager';
+import { RAMP_IDS } from '@/engine/display/glyphs/ramps';
+import { MAX_GLYPH_SCALE } from '@/engine/display/grid';
+import { PALETTE_IDS } from '@/engine/display/palette/palettes';
 import { sendCommand } from '@/state/commands';
 import { settingsStore } from '@/state/settings';
 import { statsStore } from '@/state/stats';

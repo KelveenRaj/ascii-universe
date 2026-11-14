@@ -1,5 +1,5 @@
 /**
- * CPU mirror of the geodesic integrator in src/shaders/blackhole.frag, used by unit tests to check
+ * CPU mirror of the geodesic integrator in src/scenes/black-hole/shaders/blackhole.frag, used by unit tests to check
  * the physics (capture radius, light deflection). Keep the stepping logic identical to the shader.
  *
  * Units: r_s = 1. Acceleration a = -1.5 · h² · x / r⁵ with h = |x × v|.

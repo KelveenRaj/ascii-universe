@@ -1,10 +1,15 @@
 import { useStore } from 'zustand';
+import type { SceneModule } from '@/engine/scene/SceneModule';
 import { uiStore } from '@/state/ui';
 import { Section } from '@/ui/controls';
 import { Dialog } from '@/ui/Dialog';
 import styles from '@/ui/HelpOverlay.module.css';
+import { useActiveScene } from '@/ui/useActiveScene';
 
-const GROUPS: Array<{ title: string; rows: Array<[string, string]> }> = [
+type Group = { title: string; rows: Array<[string, string]> };
+
+/** Help rows; the preset keys (1, 2, 3…) come from the active scene's camera presets. */
+const groups = (presets: SceneModule['camera']['presets']): Group[] => [
   {
     title: 'MOUSE',
     rows: [
@@ -31,7 +36,7 @@ const GROUPS: Array<{ title: string; rows: Array<[string, string]> }> = [
       ['SHIFT + WASD', 'PAN'],
       ['Q / E', 'ROLL'],
       ['Z / X  + / -', 'ZOOM'],
-      ['1 2 3', 'EDGE-ON / EHT / TOP'],
+      [presets.map((_, i) => i + 1).join(' '), presets.map((p) => p.label).join(' / ')],
       ['0 / HOME', 'RESET VIEW'],
       ['SPACE', 'PAUSE DISK'],
       ['[ ]', 'GLYPH SIZE'],
@@ -46,6 +51,7 @@ const GROUPS: Array<{ title: string; rows: Array<[string, string]> }> = [
 
 export function HelpOverlay() {
   const open = useStore(uiStore, (s) => s.helpOpen);
+  const scene = useActiveScene();
   if (!open) return null;
 
   return (
@@ -55,7 +61,7 @@ export function HelpOverlay() {
       className={styles.help}
     >
       <div className={styles.groups}>
-        {GROUPS.map((g) => (
+        {groups(scene.camera.presets).map((g) => (
           <Section key={g.title} title={g.title}>
             <dl className={styles.list}>
               {g.rows.map(([k, v]) => (

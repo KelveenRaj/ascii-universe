@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Palette } from '@/renderer/display/palette/palettes';
+import type { Palette } from '@/engine/display/palette/palettes';
 
 export const LUT_SIZE = 256;
 

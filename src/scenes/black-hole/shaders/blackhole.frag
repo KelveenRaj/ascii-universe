@@ -28,13 +28,13 @@ uniform float uStarDensity;
 in vec2 vUv;
 out vec4 fragColor;
 
-#include lib/noise.glsl;
-#include lib/stars.glsl;
-#include lib/disk.glsl;
+#include /src/shaders/lib/noise.glsl;
+#include /src/shaders/lib/stars.glsl;
+#include disk.glsl;
 
 const int MAX_STEPS_CAP = 1024;
 
-// Spatial step length. Must match stepLength() in src/renderer/physics/geodesic.ts.
+// Spatial step length. Must match stepLength() in src/scenes/black-hole/geodesic.ts.
 float stepLength(float r) {
   return clamp(0.08 * r * clamp(r / 4.0, 0.35, 1.0), 0.02, 4.0);
 }

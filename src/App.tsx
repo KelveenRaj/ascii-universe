@@ -1,6 +1,6 @@
 import { useStore } from 'zustand';
 import styles from '@/App.module.css';
-import { BlackHoleCanvas } from '@/renderer/BlackHoleCanvas';
+import { EngineCanvas } from '@/engine/EngineCanvas';
 import { settingsStore } from '@/state/settings';
 import { BootScreen } from '@/ui/BootScreen';
 import { HelpOverlay } from '@/ui/HelpOverlay';
@@ -18,7 +18,7 @@ export default function App() {
 
   return (
     <main className={styles.app}>
-      <BlackHoleCanvas />
+      <EngineCanvas />
       {hud && <Hud />}
       {hud && <KeyHint />}
       <TopBar />

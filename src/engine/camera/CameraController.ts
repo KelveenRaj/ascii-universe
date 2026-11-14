@@ -3,35 +3,45 @@ import * as THREE from 'three';
 const DEG = Math.PI / 180;
 
 export interface CameraPose {
-  /** Rotation around the world Y axis (the disk normal), radians. */
+  /** Rotation around the world Y axis (the scene's up axis, e.g. a disk's normal), radians. */
   yaw: number;
-  /** Angle above the disk plane, radians, clamped to ±90°. Inclination = 90° − elevation. */
+  /** Angle above the XZ plane (e.g. a disk), radians, clamped to ±90°. Inclination = 90° − elevation. */
   elevation: number;
-  /** Distance from the orbit target, in Schwarzschild radii. */
+  /** Distance from the orbit target, in the scene's units. */
   distance: number;
   /** Rotation around the view axis, radians. Positive turns the image clockwise. */
   roll: number;
-  /** Orbit centre. Starts at the black hole; panning moves it. */
+  /** Orbit centre. Starts at the origin; panning moves it. */
   target: THREE.Vector3;
 }
 
-export const VIEW_PRESETS = {
-  /** ~80° inclination: disk nearly edge-on, far side arcing over and under the shadow. */
-  interstellar: { elevation: 10, yaw: 0, distance: 26 },
-  /** ~17° inclination: M87*'s viewing angle, the EHT ring. */
-  eht: { elevation: 73, yaw: 0, distance: 26 },
-  topDown: { elevation: 90, yaw: 0, distance: 30 },
-} as const;
-export type ViewPreset = keyof typeof VIEW_PRESETS;
+/** A named camera view. Angles in degrees, distance in the scene's units. */
+export interface CameraPreset {
+  id: string;
+  /** Short label for buttons and help, e.g. "EDGE-ON". */
+  label: string;
+  elevation: number;
+  yaw: number;
+  distance: number;
+}
 
-export const CAMERA_LIMITS = {
-  /** Just outside the photon sphere (1.5) and the shader's camera-outside assumption. */
-  minDistance: 2.6,
-  maxDistance: 120,
-  maxElevation: 90 * DEG,
-  /** Panning can't drift the orbit centre further than this from the hole. */
-  maxTargetRadius: 30,
-};
+export interface CameraLimits {
+  minDistance: number;
+  maxDistance: number;
+  /** Radians. */
+  maxElevation: number;
+  /** Panning can't drift the orbit centre further than this from the origin. */
+  maxTargetRadius: number;
+}
+
+/**
+ * What a scene tells the camera: its views and how far you may move. The first preset is the
+ * starting view and what "reset view" returns to; presets map to the 1–9 keys in order.
+ */
+export interface CameraSetup {
+  presets: readonly CameraPreset[];
+  limits: CameraLimits;
+}
 
 const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x));
 /** Wraps an angle difference into (−π, π]. */
@@ -65,9 +75,15 @@ export class CameraController {
   private readonly qTmp = new THREE.Quaternion();
   private readonly vTmp = new THREE.Vector3();
 
-  constructor(tanHalfFov: number, preset: ViewPreset = 'interstellar') {
+  readonly presets: readonly CameraPreset[];
+  readonly limits: CameraLimits;
+
+  constructor(tanHalfFov: number, setup: CameraSetup) {
+    if (setup.presets.length === 0) throw new Error('CameraSetup needs at least one preset');
     this.tanHalfFov = tanHalfFov;
-    const p = VIEW_PRESETS[preset];
+    this.presets = setup.presets;
+    this.limits = setup.limits;
+    const p = setup.presets[0];
     const pose = (): CameraPose => ({
       yaw: p.yaw * DEG,
       elevation: p.elevation * DEG,
@@ -97,8 +113,8 @@ export class CameraController {
     this.goal.yaw += dYaw;
     this.goal.elevation = clamp(
       this.goal.elevation + dElevation,
-      -CAMERA_LIMITS.maxElevation,
-      CAMERA_LIMITS.maxElevation,
+      -this.limits.maxElevation,
+      this.limits.maxElevation,
     );
     this.notifyInput();
   }
@@ -120,8 +136,8 @@ export class CameraController {
     if (!(factor > 0)) return;
     this.goal.distance = clamp(
       this.goal.distance * factor,
-      CAMERA_LIMITS.minDistance,
-      CAMERA_LIMITS.maxDistance,
+      this.limits.minDistance,
+      this.limits.maxDistance,
     );
     this.notifyInput();
   }
@@ -143,8 +159,8 @@ export class CameraController {
       .applyQuaternion(this.q)
       .multiplyScalar(dy * worldPerHeight);
     this.goal.target.add(up);
-    if (this.goal.target.length() > CAMERA_LIMITS.maxTargetRadius) {
-      this.goal.target.setLength(CAMERA_LIMITS.maxTargetRadius);
+    if (this.goal.target.length() > this.limits.maxTargetRadius) {
+      this.goal.target.setLength(this.limits.maxTargetRadius);
     }
     this.notifyInput();
   }
@@ -155,9 +171,17 @@ export class CameraController {
     this.notifyInput();
   }
 
-  /** Eases to a preset (shortest way round), re-centres and levels the horizon. */
-  setPreset(name: ViewPreset, instant = false): void {
-    const p = VIEW_PRESETS[name];
+  hasPreset(id: string): boolean {
+    return this.presets.some((p) => p.id === id);
+  }
+
+  /**
+   * Eases to a preset (shortest way round), re-centres and levels the horizon. Unknown ids are
+   * ignored, so a stale command from another scene can't break the camera.
+   */
+  setPreset(id: string, instant = false): void {
+    const p = this.presets.find((preset) => preset.id === id);
+    if (!p) return;
     this.goal.yaw = this.current.yaw + wrapAngle(p.yaw * DEG - this.current.yaw);
     this.goal.elevation = p.elevation * DEG;
     this.goal.distance = p.distance;
@@ -168,7 +192,7 @@ export class CameraController {
   }
 
   reset(): void {
-    this.setPreset('interstellar');
+    this.setPreset(this.presets[0].id);
   }
 
   /** Jumps the current pose to the goal (no easing). */

@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useStore } from 'zustand';
-import { samplePalette, type Rgb } from '@/renderer/display/palette/lut';
-import { PALETTES } from '@/renderer/display/palette/palettes';
+import { samplePalette, type Rgb } from '@/engine/display/palette/lut';
+import { PALETTES } from '@/engine/display/palette/palettes';
 import { settingsStore } from '@/state/settings';
 
 const css = ([r, g, b]: Rgb, alpha = 1) =>

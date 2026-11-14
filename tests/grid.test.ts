@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { autoGlyphScale, computeGrid } from '@/renderer/display/grid';
+import { autoGlyphScale, computeGrid } from '@/engine/display/grid';
 
 describe('character grid', () => {
   it('auto scale lands around 120–160 columns on common screens', () => {

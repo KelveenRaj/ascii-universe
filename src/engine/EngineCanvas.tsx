@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import styles from '@/renderer/BlackHoleCanvas.module.css';
-import { Engine } from '@/renderer/Engine';
+import styles from '@/engine/EngineCanvas.module.css';
+import { Engine } from '@/engine/Engine';
 
 /**
  * The only component that touches WebGL. It mounts a canvas, hands it to the Engine and disposes the
  * Engine on unmount. It never re-renders because of the render loop.
  */
-export function BlackHoleCanvas() {
+export function EngineCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [error, setError] = useState<string | null>(null);
 

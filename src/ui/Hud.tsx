@@ -1,5 +1,5 @@
 import { useStore } from 'zustand';
-import { PALETTES } from '@/renderer/display/palette/palettes';
+import { PALETTES } from '@/engine/display/palette/palettes';
 import { settingsStore } from '@/state/settings';
 import { statsStore } from '@/state/stats';
 import { uiStore } from '@/state/ui';
@@ -11,8 +11,7 @@ import styles from '@/ui/Hud.module.css';
 /** Game-style readout in the top-left corner. Re-renders ~4×/s at most (stats are throttled). */
 export function Hud() {
   const fps = useStore(statsStore, (s) => s.fps);
-  const distance = useStore(statsStore, (s) => s.distance);
-  const inclination = useStore(statsStore, (s) => s.inclination);
+  const sceneRows = useStore(statsStore, (s) => s.sceneRows);
   const cols = useStore(statsStore, (s) => s.cols);
   const rows = useStore(statsStore, (s) => s.rows);
   const steps = useStore(statsStore, (s) => s.steps);
@@ -25,8 +24,7 @@ export function Hud() {
 
   const rowsData: Array<[string, string]> = [
     ['FPS', String(fps)],
-    ['DIST', `${distance.toFixed(1)} Rs`],
-    ['INCL', `${inclination.toFixed(0)}°`],
+    ...sceneRows,
     ['GRID', ascii && cols > 0 ? `${cols}×${rows}` : 'SMOOTH'],
     ['STEPS', String(steps)],
     ['QUAL', qualityLabel],

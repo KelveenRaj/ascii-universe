@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import asciiFrag from '@/shaders/ascii.frag';
-import { FullscreenPass } from '@/renderer/FullscreenPass';
-import type { GlyphAtlas } from '@/renderer/display/glyphs/GlyphAtlas';
-import type { CharGrid } from '@/renderer/display/grid';
+import { FullscreenPass } from '@/engine/FullscreenPass';
+import type { GlyphAtlas } from '@/engine/display/glyphs/GlyphAtlas';
+import type { CharGrid } from '@/engine/display/grid';
 
 type U<T> = THREE.IUniform<T>;
 

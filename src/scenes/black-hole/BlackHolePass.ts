@@ -1,13 +1,16 @@
 import * as THREE from 'three';
-import blackholeFrag from '@/shaders/blackhole.frag';
-import type { Settings } from '@/state/settings';
-import type { SceneLayout } from '@/renderer/display/DisplayPipeline';
-import { FullscreenPass } from '@/renderer/FullscreenPass';
+import type { SceneLayout } from '@/engine/display/DisplayPipeline';
+import { FullscreenPass } from '@/engine/FullscreenPass';
+import type { SceneFrame, SceneInstance } from '@/engine/scene/SceneModule';
+import blackholeFrag from '@/scenes/black-hole/shaders/blackhole.frag';
 
 type U<T> = THREE.IUniform<T>;
 
-/** Pass 1: ray-marches the black hole into the display's scene buffer (see blackhole.frag). */
-export class ScenePass {
+/**
+ * Ray-marches the black hole into the display's scene buffer (see shaders/blackhole.frag), and
+ * keeps the disk's animation clock.
+ */
+export class BlackHolePass implements SceneInstance {
   private readonly pass: FullscreenPass<{
     uCamPos: U<THREE.Vector3>;
     uCamBasis: U<THREE.Matrix3>;
@@ -21,6 +24,8 @@ export class ScenePass {
     uBeaming: U<number>;
     uStarDensity: U<number>;
   }>;
+  /** Disk animation time, in r_s/c units; advances at diskSpeed × real time unless paused. */
+  private diskTime = 0;
 
   constructor(tanHalfFov: number) {
     this.pass = new FullscreenPass(blackholeFrag, {
@@ -38,31 +43,35 @@ export class ScenePass {
     });
   }
 
-  /** Called after the display re-lays out the scene buffer. */
   setLayout({ aspect, starRows }: SceneLayout): void {
     const u = this.pass.uniforms;
     u.uAspect.value = aspect;
     u.uPixelAngle.value = (2 * u.uTanHalfFov.value) / starRows;
   }
 
-  render(
-    renderer: THREE.WebGLRenderer,
-    target: THREE.WebGLRenderTarget,
-    camera: THREE.PerspectiveCamera,
-    s: Settings,
-    time: number,
-    steps: number,
-  ): void {
+  render({ renderer, target, camera, settings: s, dt, steps, frozenTime }: SceneFrame): void {
+    if (!s.paused) this.diskTime += dt * s.diskSpeed;
     const u = this.pass.uniforms;
     u.uCamPos.value.copy(camera.position);
     u.uCamBasis.value.setFromMatrix4(camera.matrixWorld);
-    u.uTime.value = time;
+    u.uTime.value = frozenTime ?? this.diskTime;
     u.uMaxSteps.value = steps;
     u.uDiskInner.value = s.diskInner;
     u.uDiskOuter.value = s.diskOuter;
     u.uBeaming.value = s.beaming;
     u.uStarDensity.value = s.starDensity;
     this.pass.render(renderer, target);
+  }
+
+  hudRows(camera: THREE.PerspectiveCamera): Array<[string, string]> {
+    const pos = camera.position;
+    const distance = pos.length();
+    // inclination: angle between the view direction and the disk normal
+    const inclination = (Math.acos(Math.abs(pos.y) / Math.max(distance, 1e-6)) * 180) / Math.PI;
+    return [
+      ['DIST', `${distance.toFixed(1)} Rs`],
+      ['INCL', `${inclination.toFixed(0)}°`],
+    ];
   }
 
   dispose(): void {

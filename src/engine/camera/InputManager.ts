@@ -1,4 +1,4 @@
-import type { CameraController, ViewPreset } from '@/renderer/camera/CameraController';
+import type { CameraController } from '@/engine/camera/CameraController';
 
 /** Radians of orbit per viewport-height of drag. */
 const ORBIT_PER_HEIGHT = Math.PI;
@@ -10,13 +10,10 @@ const KEY_ZOOM_RATE = 1.2; // e-folds/s
 const DOUBLE_TAP_MS = 300;
 const DOUBLE_TAP_SLOP_PX = 24;
 
-const PRESET_KEYS: Record<string, ViewPreset> = {
-  Digit1: 'interstellar',
-  Numpad1: 'interstellar',
-  Digit2: 'eht',
-  Numpad2: 'eht',
-  Digit3: 'topDown',
-  Numpad3: 'topDown',
+/** Digit1–9 / Numpad1–9 → preset index 0–8 (the active scene's presets, in order). */
+const presetIndexForKey = (code: string): number => {
+  const m = /^(?:Digit|Numpad)([1-9])$/.exec(code);
+  return m ? Number(m[1]) - 1 : -1;
 };
 const RESET_KEYS = new Set(['Digit0', 'Numpad0', 'Home']);
 /** Held-key camera controls, by KeyboardEvent.code (layout-independent). */
@@ -78,7 +75,7 @@ export function isTypingTarget(target: EventTarget | null): boolean {
  *
  * Mouse: left-drag orbit · right/middle/shift-drag pan · wheel zoom · double-click reset.
  * Touch: one finger orbit · two fingers pan + pinch zoom + twist roll · double-tap reset.
- * Keys: WASD/arrows orbit (Shift = pan) · Q/E roll · Z/X, +/−, PgUp/PgDn zoom · 1/2/3 presets · 0 reset.
+ * Keys: WASD/arrows orbit (Shift = pan) · Q/E roll · Z/X, +/−, PgUp/PgDn zoom · 1–9 scene presets · 0 reset.
  */
 export class InputManager {
   private readonly el: HTMLElement;
@@ -222,8 +219,8 @@ export class InputManager {
       if (PREVENT_DEFAULT.has(e.code)) e.preventDefault();
     }
     if (e.repeat) return;
-    const preset = PRESET_KEYS[e.code];
-    if (preset) this.camera.setPreset(preset);
+    const preset = this.camera.presets[presetIndexForKey(e.code)];
+    if (preset) this.camera.setPreset(preset.id);
     else if (RESET_KEYS.has(e.code)) this.camera.reset();
   };
 

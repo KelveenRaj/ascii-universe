@@ -80,7 +80,7 @@ lower starting quality.
 
 Each frame runs a few full-screen shader passes (plain Three.js, no scene graph):
 
-1. **Scene** (`src/shaders/blackhole.frag`): one ray per character cell (2×2 with supersampling)
+1. **Scene** (`src/scenes/black-hole/shaders/blackhole.frag`): one ray per character cell (2×2 with supersampling)
    into a small float texture. Rays follow Schwarzschild null geodesics using the exact
    acceleration `a = −1.5·h²·x/r⁵` (units where the Schwarzschild radius is 1), stepped with an
    adaptive leapfrog integrator. Each time a ray crosses the disk plane it picks up emission, up to
@@ -108,13 +108,16 @@ so moving a slider never re-renders the canvas component.
 
 ```
 src/
-  renderer/   Engine (render loop), black hole scene pass, camera + input, quality governor
+  engine/     space-agnostic: Engine (render loop), camera + input, quality governor
     display/  DisplayPipeline: scene buffer, grid, glyph atlas, palettes, bloom/ASCII/CRT/readback
-  shaders/    GLSL passes and shared includes
-  state/      settings (persisted), stats, UI state, commands
+    scene/    SceneModule: the contract every place you can visit implements
+  scenes/     one folder per place, plus registry.ts
+    black-hole/  Sgr A*: ray-marching pass + shaders, geodesic physics, camera presets
+  shaders/    display passes and shared GLSL includes
+  state/      settings (persisted), active scene, stats, UI state, commands
   ui/         HUD, settings panel, help, boot screen, copy-as-text, overlays
-e2e/          Playwright screenshot tests (baselines in e2e/__screenshots__)
-tests/        geodesics, camera, glyphs, palettes, grid, settings, quality governor, text export
+e2e/          Playwright: screenshot tests (baselines in e2e/__screenshots__) and UI checks
+tests/        geodesics, camera, scenes, glyphs, palettes, grid, settings, quality governor, text export
 ```
 
 Conventions: imports are absolute from `src/` (`import { x } from '@/state/settings'`, enforced by

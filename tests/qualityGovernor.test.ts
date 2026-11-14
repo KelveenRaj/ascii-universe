@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AUTO_TIERS, QualityGovernor } from '@/renderer/QualityGovernor';
+import { AUTO_TIERS, QualityGovernor } from '@/engine/quality/QualityGovernor';
 
 /** Feeds `seconds` worth of frames at a steady frame time; returns how many tier changes happened. */
 function run(g: QualityGovernor, frameMs: number, seconds: number): number {

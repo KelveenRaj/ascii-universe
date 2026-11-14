@@ -1,24 +1,20 @@
 import { DEBUG_VIEWS, settingsStore, type DebugView } from '@/state/settings';
-import {
-  VIEW_PRESETS,
-  type CameraController,
-  type ViewPreset,
-} from '@/renderer/camera/CameraController';
-import { RAMPS, type RampId } from '@/renderer/display/glyphs/ramps';
-import { PALETTES, type PaletteId } from '@/renderer/display/palette/palettes';
+import type { CameraController } from '@/engine/camera/CameraController';
+import { RAMPS, type RampId } from '@/engine/display/glyphs/ramps';
+import { PALETTES, type PaletteId } from '@/engine/display/palette/palettes';
 
 /**
  * Dev-only URL params for reproducible screenshots (the visual tests in e2e/ rely on them), e.g.
  * ?preset=eht&view=redshift&dist=20&elev=10&yaw=0&roll=0&t=12&ramp=blocks&palette=green&scale=2
  * &ascii=0&ss=1&crt=0&bloom=0&mask=1
  *
- * Applies camera and settings overrides, and returns the frozen disk time from `t` (or null).
+ * Applies camera and settings overrides, and returns the frozen scene time from `t` (or null).
  */
 export function applyDevQueryParams(controller: CameraController): number | null {
   const q = new URLSearchParams(window.location.search);
   const s = settingsStore.getState();
   const preset = q.get('preset');
-  if (preset && preset in VIEW_PRESETS) controller.setPreset(preset as ViewPreset, true);
+  if (preset) controller.setPreset(preset, true); // ignored if the scene has no such preset
   const view = q.get('view');
   if (view && (DEBUG_VIEWS as readonly string[]).includes(view)) {
     s.set('debugView', view as DebugView);

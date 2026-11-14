@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useStore } from 'zustand';
-import { RAMP_IDS, RAMPS } from '@/renderer/display/glyphs/ramps';
-import { PALETTE_IDS, PALETTES } from '@/renderer/display/palette/palettes';
+import { RAMP_IDS, RAMPS } from '@/engine/display/glyphs/ramps';
+import { PALETTE_IDS, PALETTES } from '@/engine/display/palette/palettes';
 import { sendCommand } from '@/state/commands';
 import {
   NUMERIC_RANGES,
@@ -25,6 +25,7 @@ import {
 } from '@/ui/controls';
 import { cx } from '@/ui/cx';
 import styles from '@/ui/SettingsPanel.module.css';
+import { useActiveScene } from '@/ui/useActiveScene';
 
 type SizeOption = 'auto' | '1' | '2' | '3' | '4' | 'custom';
 
@@ -103,6 +104,7 @@ function Effect(props: { label: string; flag: EffectKey; amount: AmountKey; disa
 
 export function SettingsPanel() {
   const open = useStore(uiStore, (s) => s.panelOpen);
+  const scene = useActiveScene();
   const panelRef = useRef<HTMLElement>(null);
 
   const [ascii, setAscii] = useSetting('ascii');
@@ -231,15 +233,11 @@ export function SettingsPanel() {
 
         <Section title="CAMERA">
           <div className={styles.buttonRow}>
-            <PixelButton onClick={() => sendCommand({ type: 'preset', preset: 'interstellar' })}>
-              EDGE-ON
-            </PixelButton>
-            <PixelButton onClick={() => sendCommand({ type: 'preset', preset: 'eht' })}>
-              EHT
-            </PixelButton>
-            <PixelButton onClick={() => sendCommand({ type: 'preset', preset: 'topDown' })}>
-              TOP
-            </PixelButton>
+            {scene.camera.presets.map((p) => (
+              <PixelButton key={p.id} onClick={() => sendCommand({ type: 'preset', preset: p.id })}>
+                {p.label}
+              </PixelButton>
+            ))}
           </div>
           <Toggle label="ATTRACT MODE" checked={attract} onChange={setAttract} />
           <Toggle label="SHOW HUD" checked={hud} onChange={setHud} />

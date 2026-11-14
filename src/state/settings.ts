@@ -1,7 +1,7 @@
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { createStore } from 'zustand/vanilla';
-import { RAMPS, type RampId } from '@/renderer/display/glyphs/ramps';
-import { PALETTES, type PaletteId } from '@/renderer/display/palette/palettes';
+import { RAMPS, type RampId } from '@/engine/display/glyphs/ramps';
+import { PALETTES, type PaletteId } from '@/engine/display/palette/palettes';
 import { deviceDefaults } from '@/state/deviceTier';
 
 /**

@@ -6,17 +6,17 @@ import {
   GlyphRasterizer,
   loadPixelFont,
   type GlyphAtlas,
-} from '@/renderer/display/glyphs/GlyphAtlas';
-import { RAMPS } from '@/renderer/display/glyphs/ramps';
-import { autoGlyphScale, computeGrid, type CharGrid } from '@/renderer/display/grid';
-import { createLutTexture, hexToRgb, updateLutTexture } from '@/renderer/display/palette/lut';
-import { PALETTES } from '@/renderer/display/palette/palettes';
-import { AsciiPass, type PaletteColors } from '@/renderer/display/passes/AsciiPass';
-import { BloomPass } from '@/renderer/display/passes/BloomPass';
-import { CrtPass } from '@/renderer/display/passes/CrtPass';
-import { PresentPass } from '@/renderer/display/passes/PresentPass';
-import { ReadbackPass } from '@/renderer/display/passes/ReadbackPass';
-import type { QualityTier } from '@/renderer/QualityGovernor';
+} from '@/engine/display/glyphs/GlyphAtlas';
+import { RAMPS } from '@/engine/display/glyphs/ramps';
+import { autoGlyphScale, computeGrid, type CharGrid } from '@/engine/display/grid';
+import { createLutTexture, hexToRgb, updateLutTexture } from '@/engine/display/palette/lut';
+import { PALETTES } from '@/engine/display/palette/palettes';
+import { AsciiPass, type PaletteColors } from '@/engine/display/passes/AsciiPass';
+import { BloomPass } from '@/engine/display/passes/BloomPass';
+import { CrtPass } from '@/engine/display/passes/CrtPass';
+import { PresentPass } from '@/engine/display/passes/PresentPass';
+import { ReadbackPass } from '@/engine/display/passes/ReadbackPass';
+import type { QualityTier } from '@/engine/quality/QualityGovernor';
 
 /** Smooth (non-ASCII) mode renders at a fraction of the screen and upscales. */
 const SMOOTH_SCALE = 0.6;
