@@ -1,6 +1,7 @@
 import type * as THREE from 'three';
 import type { CameraSetup } from '@/engine/camera/CameraController';
 import type { SceneLayout } from '@/engine/display/DisplayPipeline';
+import type { Material, Sky } from '@/engine/display/palette/palettes';
 import type { ParamSchema, ParamValue, ParamValues } from '@/engine/scene/params';
 import type { SettingsState } from '@/state/settings';
 
@@ -12,11 +13,13 @@ import type { SettingsState } from '@/state/settings';
  * bloom, CRT, copy as text) comes for free.
  *
  * Scene buffer layout (half-float RGBA, one texel per character cell, or 2×2 when supersampled):
- *   R = brightness (HDR, linear) → picks the glyph and palette colour
+ *   R = brightness (HDR, linear) → picks the glyph, and the colour along the material's ramp
  *   G = star brightness for sky cells, or −1 for pure-black "void" cells (e.g. a shadow)
- *   B = scene-specific value shown by the "redshift" debug view
- *   A = fraction of the quality budget used, shown by the "steps" debug view
- * (M4 in docs/restructure-plan.md generalises this with a per-cell material/palette row.)
+ *   B = material: index into this scene's `materials` (a whole number; read per texel, never
+ *       blended, so neighbouring materials don't mix)
+ *   A = value for the active debug view (settings.debugView):
+ *         'redshift' → the scene's shift factor g (1 = none, > 1 blueshift, < 1 redshift, 0 = n/a)
+ *         otherwise  → fraction of the quality budget used (shown by 'steps')
  */
 export interface SceneModule<S extends ParamSchema = ParamSchema> {
   /** Stable id, used in URLs and saved state. */
@@ -25,6 +28,13 @@ export interface SceneModule<S extends ParamSchema = ParamSchema> {
   title: string;
   /** Views, limits and units for the orbit camera. */
   camera: CameraSetup;
+  /**
+   * What the scene paints with, at least one. Index i is the value written to B. Under natural
+   * colours each uses its own ramp; terminal palettes recolour them all.
+   */
+  materials: readonly Material[];
+  /** Star tint and empty-sky colour under natural colours. */
+  sky: Sky;
   /** The scene's knobs: defaults, validation, saved per scene, shown in the settings panel. */
   params: S;
   create(ctx: SceneContext): SceneInstance<ParamValues<S>>;

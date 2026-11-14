@@ -1,7 +1,7 @@
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { createStore } from 'zustand/vanilla';
 import { RAMPS, type RampId } from '@/engine/display/glyphs/ramps';
-import { PALETTES, type PaletteId } from '@/engine/display/palette/palettes';
+import { LEGACY_PALETTE_IDS, PALETTES, type PaletteId } from '@/engine/display/palette/palettes';
 import { deviceDefaults } from '@/state/deviceTier';
 import { migrateLegacySceneParams, SETTINGS_KEY } from '@/state/legacySettings';
 
@@ -82,7 +82,7 @@ const BASE_DEFAULTS: Settings = {
   glyphScale: 0,
   columns: 0,
   supersample: 2,
-  palette: 'eht',
+  palette: 'natural',
   exposure: 2.2,
   quality: 'auto',
   attractMode: true,
@@ -149,7 +149,15 @@ export function sanitizeSettings(raw: unknown): Partial<Settings> {
   const out: Record<string, unknown> = {};
   for (const key of Object.keys(DEFAULT_SETTINGS) as Array<keyof Settings>) {
     if (TRANSIENT_KEYS.has(key) || !(key in input)) continue;
-    const value = input[key];
+    let value = input[key];
+    // renamed palettes (v1 "eht" is now "natural")
+    if (
+      key === 'palette' &&
+      typeof value === 'string' &&
+      Object.hasOwn(LEGACY_PALETTE_IDS, value)
+    ) {
+      value = LEGACY_PALETTE_IDS[value];
+    }
     const allowed = ENUMS[key];
     if (allowed) {
       if (allowed.includes(value)) out[key] = value;

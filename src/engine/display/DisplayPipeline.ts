@@ -9,8 +9,13 @@ import {
 } from '@/engine/display/glyphs/GlyphAtlas';
 import { RAMPS } from '@/engine/display/glyphs/ramps';
 import { autoGlyphScale, computeGrid, type CharGrid } from '@/engine/display/grid';
-import { createLutTexture, hexToRgb, updateLutTexture } from '@/engine/display/palette/lut';
-import { PALETTES } from '@/engine/display/palette/palettes';
+import { createPaletteTexture, hexToRgb, updatePaletteTexture } from '@/engine/display/palette/lut';
+import {
+  PALETTES,
+  resolveColors,
+  type Material,
+  type Sky,
+} from '@/engine/display/palette/palettes';
 import { AsciiPass, type PaletteColors } from '@/engine/display/passes/AsciiPass';
 import { BloomPass } from '@/engine/display/passes/BloomPass';
 import { CrtPass } from '@/engine/display/passes/CrtPass';
@@ -23,6 +28,12 @@ const SMOOTH_SCALE = 0.6;
 const SMOOTH_MAX_HEIGHT = 600;
 /** In ASCII mode stars are sized a bit under one cell, so each lands in a single cell. */
 const STAR_CELL_FRACTION = 0.6;
+
+/** The part of a scene the display colours with: its materials (palette rows) and sky. */
+export interface SceneColors {
+  materials: readonly Material[];
+  sky: Sky;
+}
 
 /** What a scene needs to know about the buffer it renders into, after a layout change. */
 export interface SceneLayout {
@@ -61,7 +72,11 @@ export class DisplayPipeline {
   /** The real pixel font has loaded and the atlas has been rebuilt with it. */
   fontReady = false;
 
-  constructor(settings: SettingsState) {
+  /** The active scene's materials and sky (combined with the palette mode). */
+  private sceneColors: SceneColors;
+
+  constructor(settings: SettingsState, sceneColors: SceneColors) {
+    this.sceneColors = sceneColors;
     this.sceneTarget = new THREE.WebGLRenderTarget(1, 1, {
       type: THREE.HalfFloatType,
       format: THREE.RGBAFormat,
@@ -71,11 +86,11 @@ export class DisplayPipeline {
       generateMipmaps: false,
     });
 
-    const palette = PALETTES[settings.palette];
-    this.lut = createLutTexture(palette);
+    const { ramps, sky } = resolveColors(PALETTES[settings.palette], sceneColors);
+    this.lut = createPaletteTexture(ramps);
     this.colors = {
-      starTint: new THREE.Vector3(...hexToRgb(palette.starTint)),
-      background: new THREE.Vector3(...hexToRgb(palette.background)),
+      starTint: new THREE.Vector3(...hexToRgb(sky.starTint)),
+      background: new THREE.Vector3(...hexToRgb(sky.background)),
     };
 
     // Until the pixel font has loaded, glyphs fall back to dither blocks; swapped in a moment later.
@@ -186,10 +201,10 @@ export class DisplayPipeline {
   }
 
   private applyPalette(s: SettingsState): void {
-    const palette = PALETTES[s.palette];
-    updateLutTexture(this.lut, palette);
-    this.colors.starTint.set(...hexToRgb(palette.starTint));
-    this.colors.background.set(...hexToRgb(palette.background));
+    const { ramps, sky } = resolveColors(PALETTES[s.palette], this.sceneColors);
+    updatePaletteTexture(this.lut, ramps);
+    this.colors.starTint.set(...hexToRgb(sky.starTint));
+    this.colors.background.set(...hexToRgb(sky.background));
   }
 
   private rebuildAtlas(): void {

@@ -8,8 +8,9 @@
 //   R = disk intensity (HDR, linear)
 //   G = star intensity behind the disk, or -1 if the ray fell into the hole (lets later passes tell
 //       the pure-black shadow apart from the near-black sky)
-//   B = g-factor of the first disk crossing (0 if none)
-//   A = fraction of the step budget used (debug heatmap)
+//   B = material: 0 (the EHT disk, see materials.ts); the sky uses the scene sky colours
+//   A = g-factor of the first disk crossing (0 if none) in the redshift debug view, otherwise the
+//       fraction of the step budget used (steps debug heatmap)
 precision highp float;
 precision highp int;
 
@@ -24,6 +25,7 @@ uniform float uDiskInner;
 uniform float uDiskOuter;
 uniform float uBeaming;
 uniform float uStarDensity;
+uniform bool uRedshiftView; // the "redshift" debug view is on: write g into A
 
 in vec2 vUv;
 out vec4 fragColor;
@@ -110,5 +112,7 @@ void main() {
     sky = -1.0;
   }
 
-  fragColor = vec4(diskI, sky, firstG, float(steps) / float(uMaxSteps));
+  const float MATERIAL_DISK = 0.0;
+  float debugValue = uRedshiftView ? firstG : float(steps) / float(uMaxSteps);
+  fragColor = vec4(diskI, sky, MATERIAL_DISK, debugValue);
 }

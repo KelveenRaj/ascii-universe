@@ -58,11 +58,11 @@ export class Engine {
     this.renderer.autoClear = false;
 
     const settings = settingsStore.getState();
-    this.display = new DisplayPipeline(settings);
-
-    const tanHalfFov = Math.tan((FOV_DEG * Math.PI) / 360);
     const module = activeScene();
     this.sceneId = module.id;
+    this.display = new DisplayPipeline(settings, module);
+
+    const tanHalfFov = Math.tan((FOV_DEG * Math.PI) / 360);
     this.scene = module.create({ tanHalfFov });
     this.controller = new CameraController(tanHalfFov, module.camera);
     this.controller.attractEnabled = settings.attractMode;

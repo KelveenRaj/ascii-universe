@@ -1,5 +1,5 @@
-// Milestone 1 display pass: tonemap the scene buffer and colour it through the palette LUT.
-// In M2 this is replaced by the ASCII pass, which uses the same tonemap + LUT per character cell.
+// Smooth (non-ASCII) display pass, also used for the debug views: tonemap the scene buffer and
+// colour it through the palette, at the scene buffer's own resolution.
 precision highp float;
 precision highp int;
 
@@ -13,11 +13,7 @@ uniform int uDebugView; // 0 final, 1 intensity, 2 redshift, 3 steps
 in vec2 vUv;
 out vec4 fragColor;
 
-const float LUT_SIZE = 256.0;
-
-vec3 lut(float t) {
-  return texture(uLut, vec2((clamp(t, 0.0, 1.0) * (LUT_SIZE - 1.0) + 0.5) / LUT_SIZE, 0.5)).rgb;
-}
+#include lib/palette.glsl;
 
 vec3 heat(float t) {
   t = clamp(t, 0.0, 1.0);
@@ -34,8 +30,8 @@ void main() {
   if (uDebugView == 1) {
     col = vec3(t);
   } else if (uDebugView == 2) {
-    // blue = blueshifted (approaching), red = redshifted (receding)
-    float g = s.b;
+    // blue = blueshifted (approaching), red = redshifted (receding); the scene writes g into A
+    float g = s.a;
     vec3 shift = g > 1.0
       ? vec3(0.25, 0.55, 1.0) * clamp((g - 1.0) * 2.5, 0.0, 1.0)
       : vec3(1.0, 0.3, 0.15) * clamp((1.0 - g) * 2.5, 0.0, 1.0);
@@ -43,7 +39,9 @@ void main() {
   } else if (uDebugView == 3) {
     col = heat(s.a);
   } else {
-    col = lut(t) + uStarTint * starT + uBackground * skyMask * (1.0 - t);
+    ivec2 size = textureSize(uScene, 0);
+    ivec2 texel = clamp(ivec2(vUv * vec2(size)), ivec2(0), size - 1);
+    col = lut(t, materialRow(texel)) + uStarTint * starT + uBackground * skyMask * (1.0 - t);
   }
   fragColor = vec4(col, 1.0);
 }

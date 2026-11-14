@@ -23,6 +23,7 @@ test.describe('scene UI', () => {
     await expect(hud).toContainText('DIST');
     await expect(hud).toContainText('Rs');
     await expect(hud).toContainText('INCL');
+    await expect(hud).toContainText('NATURAL'); // default palette: each material's own colours
   });
 
   test('settings panel has the scene presets', async ({ page }) => {

@@ -63,8 +63,8 @@ off in settings.
 Everything is in the settings panel (Tab, or the button top-right) and is saved in your browser:
 
 - **Display:** ASCII mode, glyph size (auto, 1–4×, or an exact column count), 2×2 supersampling,
-  character set (classic, dense, blocks, minimal), palette (EHT, afmhot, green phosphor, amber,
-  mono), exposure.
+  character set (classic, dense, blocks, minimal), palette (natural colours, or a single-colour
+  terminal look: afmhot, green phosphor, amber, mono), exposure.
 - **Black hole:** quality, disk speed, Doppler beaming strength, star density, pause.
 - **CRT:** curvature, scanlines, chromatic aberration, vignette, phosphor mask and flicker, each with
   its own strength, plus bloom.
@@ -91,7 +91,8 @@ Each frame runs a few full-screen shader passes (plain Three.js, no scene graph)
    pattern into thin rings.
 3. **Bloom:** a small blur at cell resolution for phosphor glow.
 4. **ASCII** (`src/shaders/ascii.frag`): brightness → tonemap → glyph from a ramp sorted by measured
-   ink coverage, coloured through a 256-entry palette texture. Glyphs come from Press Start 2P,
+   ink coverage, coloured through a palette texture with one 256-entry ramp per material (each scene
+   names its materials; the black hole has one, its EHT-style disk). Glyphs come from Press Start 2P,
    rasterised to 1-bit at load time.
 5. **CRT** (`src/shaders/crt.frag`): curvature, aberration, scanlines aligned to glyph pixels,
    mask, vignette, flicker. Skipped entirely when everything is off.
@@ -99,7 +100,7 @@ Each frame runs a few full-screen shader passes (plain Three.js, no scene graph)
 Copy as text reads the glyph indices back through the same mapping code
 (`src/shaders/lib/glyphmap.glsl`), which is why it always matches the screen.
 
-The palette maps _brightness_ to colour, like the EHT images (their colours show radio brightness
+Each ramp maps _brightness_ to colour, like the EHT images (their colours show radio brightness
 temperature, not visible light). Simplifications: the hole doesn't spin (no Kerr), and the disk is
 infinitely thin.
 
