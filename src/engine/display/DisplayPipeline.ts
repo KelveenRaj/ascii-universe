@@ -12,14 +12,17 @@ import { autoGlyphScale, computeGrid, type CharGrid } from '@/engine/display/gri
 import {
   createPaletteTexture,
   hexToRgb,
+  luminance,
   sampleRamp,
   updatePaletteTexture,
+  type Rgb,
 } from '@/engine/display/palette/lut';
-import { TextLayer } from '@/engine/display/TextLayer';
+import { TEXT_SWATCHES, TextLayer } from '@/engine/display/TextLayer';
 import {
   PALETTES,
   resolveColors,
   type Material,
+  type Ramp,
   type Sky,
 } from '@/engine/display/palette/palettes';
 import { AsciiPass, type PaletteColors } from '@/engine/display/passes/AsciiPass';
@@ -36,6 +39,24 @@ const SMOOTH_MAX_HEIGHT = 600;
 const STAR_CELL_FRACTION = 0.6;
 /** Text colours sampled from the main ramp: bright, normal, dim, accent (see TEXT_STYLES). */
 const TEXT_TONES = [0.97, 0.84, 0.5, 0.62];
+
+/**
+ * All the text colours for a palette: the four tones from the scene's main ramp, then the
+ * swatches: their own colours under natural colours (no palette ramp); otherwise a tone of the
+ * palette's ramp by how light the swatch is, so ships still differ in a one-colour terminal.
+ */
+export function textColors(paletteRamp: Ramp | null, mainRamp: Ramp): Rgb[] {
+  const tones = TEXT_TONES.map((t) => sampleRamp(mainRamp, t));
+  const lums = TEXT_SWATCHES.map((s) => luminance(hexToRgb(s.hex)));
+  const lo = Math.min(...lums);
+  const hi = Math.max(...lums);
+  const swatches = TEXT_SWATCHES.map((s, i) =>
+    paletteRamp
+      ? sampleRamp(paletteRamp, 0.6 + (0.38 * (lums[i] - lo)) / (hi - lo))
+      : hexToRgb(s.hex),
+  );
+  return [...tones, ...swatches];
+}
 
 /** The part of a scene the display colours with: its materials (palette rows) and sky. */
 export interface SceneColors {
@@ -103,7 +124,9 @@ export class DisplayPipeline {
     this.colors = {
       starTint: new THREE.Vector3(...hexToRgb(sky.starTint)),
       background: new THREE.Vector3(...hexToRgb(sky.background)),
-      text: TEXT_TONES.map((t) => new THREE.Vector3(...sampleRamp(ramps[0], t))),
+      text: textColors(PALETTES[settings.palette].ramp, ramps[0]).map(
+        (c) => new THREE.Vector3(...c),
+      ),
     };
 
     // Until the pixel font has loaded, glyphs fall back to dither blocks; swapped in a moment later.
@@ -234,7 +257,8 @@ export class DisplayPipeline {
     updatePaletteTexture(this.lut, ramps);
     this.colors.starTint.set(...hexToRgb(sky.starTint));
     this.colors.background.set(...hexToRgb(sky.background));
-    this.colors.text.forEach((v, i) => v.set(...sampleRamp(ramps[0], TEXT_TONES[i])));
+    const text = textColors(PALETTES[s.palette].ramp, ramps[0]);
+    this.colors.text.forEach((v, i) => v.set(...text[i]));
   }
 
   private rebuildAtlas(): void {

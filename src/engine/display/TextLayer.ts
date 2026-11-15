@@ -2,12 +2,39 @@ import * as THREE from 'three';
 import { TEXT_CHARS } from '@/engine/display/glyphs/ramps';
 
 /**
- * Text colours, picked from the active palette (see DisplayPipeline): bright and normal ink, dim,
- * and an accent. Indices match uTextColors in ascii.frag.
+ * Fixed colour swatches for text that keeps its own colour (a pilot's ship): true colours under
+ * natural colours, mapped to a tone of the palette's ramp under the terminal palettes.
  */
-export const TEXT_STYLES = ['bright', 'normal', 'dim', 'accent'] as const;
-export type TextStyle = (typeof TEXT_STYLES)[number];
+export const TEXT_SWATCHES = [
+  { id: 'white', hex: '#F2F2EE' },
+  { id: 'amber', hex: '#FFB547' },
+  { id: 'orange', hex: '#FF7A2E' },
+  { id: 'red', hex: '#FF4848' },
+  { id: 'magenta', hex: '#FF4FD8' },
+  { id: 'violet', hex: '#A57CFF' },
+  { id: 'blue', hex: '#4F8BFF' },
+  { id: 'cyan', hex: '#4FE3FF' },
+  { id: 'teal', hex: '#2EC9A0' },
+  { id: 'green', hex: '#4CE05A' },
+  { id: 'lime', hex: '#C6F24A' },
+  { id: 'gold', hex: '#FFD84A' },
+] as const;
+export type SwatchId = (typeof TEXT_SWATCHES)[number]['id'];
 
+/**
+ * Text colours: bright and normal ink, dim and an accent, picked from the active palette (see
+ * DisplayPipeline), then one per swatch. Indices match uTextColors in ascii.frag.
+ */
+export const TEXT_STYLES = [
+  'bright',
+  'normal',
+  'dim',
+  'accent',
+  ...TEXT_SWATCHES.map((s) => `swatch:${s.id}` as const),
+] as const;
+export type TextStyle = 'bright' | 'normal' | 'dim' | 'accent' | `swatch:${SwatchId}`;
+
+const STYLE_INDEX = new Map<string, number>(TEXT_STYLES.map((s, i) => [s, i]));
 const CODE_FOR = new Map(TEXT_CHARS.map((ch, i) => [ch, i + 1]));
 const UNKNOWN = CODE_FOR.get('?')!;
 
@@ -64,7 +91,7 @@ export class TextLayer {
     const c0 = Math.round(col);
     const r = Math.round(row);
     if (r < 0 || r >= this.rows) return;
-    const styleIndex = TEXT_STYLES.indexOf(style);
+    const styleIndex = STYLE_INDEX.get(style) ?? 1;
     let c = c0;
     for (const ch of text) {
       if (c >= 0 && c < this.cols) {

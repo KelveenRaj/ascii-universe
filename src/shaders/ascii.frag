@@ -21,7 +21,7 @@ uniform vec3 uStarTint;
 uniform vec3 uBackground;
 uniform sampler2D uText;     // text layer: labels, brackets, game sprites (see lib/text.glsl)
 uniform float uTextBase;     // atlas index of the first text glyph
-uniform vec3 uTextColors[4]; // bright, normal, dim, accent
+uniform vec3 uTextColors[16]; // bright, normal, dim, accent, then 12 swatches (TEXT_STYLES)
 
 out vec4 fragColor;
 
@@ -56,7 +56,7 @@ void main() {
   vec3 inkColor = glyph.y == 2.0
     ? uStarTint * (0.55 + 0.45 * starTone(scene.g))
     : lut(pow(t, 0.85), material); // colour runs slightly ahead so dim glyphs stay readable
-  if (isText) inkColor = uTextColors[int(clamp(text.y, 0.0, 3.0))];
+  if (isText) inkColor = uTextColors[int(clamp(text.y, 0.0, 15.0))];
 
   // shadow cells (scene.g < 0) are pure black, sky cells get the palette background
   vec3 paper = scene.g < 0.0 ? vec3(0.0) : uBackground;

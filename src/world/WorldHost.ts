@@ -34,7 +34,8 @@ import {
   type Vec3d,
 } from '@/world/math';
 import { Neighbourhood, type Target } from '@/world/Neighbourhood';
-import { drawShip } from '@/world/ship/sprite';
+import { DEFAULT_SHIP, type ShipDesign } from '@/world/ship/design';
+import { drawDesignedShip, Trail } from '@/world/ship/sprite';
 import { formatDistance, nearStars } from '@/world/stars';
 
 /** Where a new pilot starts: just above the Sun's spot in the disk, nose towards the core. */
@@ -122,6 +123,7 @@ export class WorldHost {
   private flight: FlightModel | null = null;
   private chase = new ChaseCamera(GALAXY_RIG);
   private dust = new SpaceDust(GALAXY_DUST);
+  private readonly trail = new Trail();
   private readonly pose = {
     position: new THREE.Vector3(),
     target: new THREE.Vector3(),
@@ -240,7 +242,13 @@ export class WorldHost {
     this.jump = null;
     this.inner = null;
     this.input.setEnabled(false);
-    worldStore.setState({ hud: null, requests: [], sceneId: 'world-galaxy', warpLabel: null });
+    worldStore.setState({
+      hud: null,
+      requests: [],
+      sceneId: 'world-galaxy',
+      warpLabel: null,
+      hangarOpen: false,
+    });
     this.hudJson = '';
   }
 
@@ -254,6 +262,7 @@ export class WorldHost {
       flight.throttle = 0;
     }
     this.chase = new ChaseCamera(layer?.rig ?? GALAXY_RIG);
+    this.trail.reset();
     this.dust = new SpaceDust(layer?.dustRadius ?? GALAXY_DUST);
     this.target = null;
     worldStore.setState({ sceneId: this.sceneId, warpLabel });
@@ -328,6 +337,12 @@ export class WorldHost {
     // distance is only counted in open space (each inner layer has its own units)
     const moved = this.inner ? 0 : distance(before, flight.pos);
     this.dust.update(step, flight.vel);
+    // no trail through hyperspace: it would draw a line across the sky
+    if (this.jump) this.trail.reset();
+    else if (step > 0) {
+      toV3(flight.pos, this.shipPos);
+      this.trail.update(step, this.shipPos, flight.speed > 1e-9);
+    }
 
     if (this.inner) {
       if (this.inner.outside(flight.pos)) this.leave(flight);
@@ -537,20 +552,29 @@ export class WorldHost {
     if (!flight) return;
     this.dust.draw(text, view.camera, view.tanHalfFov, flight.pos, flight.vel);
     if (this.target) this.drawTarget(text, view, flight, this.target);
+    const design = this.design();
+    toV3(flight.pos, this.shipPos);
+    const at = projectToGrid(this.shipPos, view.camera, view.tanHalfFov, text.cols, text.rows);
+    this.trail.draw(text, view.camera, view.tanHalfFov, design.trail, at);
     // hidden behind a planet (or the star, or the hole)
     if (this.inner && blocked(this.camPos, flight.pos, this.inner.occluders())) return;
-    toV3(flight.pos, this.shipPos);
     toV3(flight.forward, this.shipDir);
     const burning = !!this.jump || flight.boosting || (flight.throttle > 0 && this.frame % 4 < 3);
-    drawShip(
+    drawDesignedShip(
       text,
       view.camera,
       view.tanHalfFov,
       this.shipPos,
       this.shipDir,
+      design,
       burning,
       this.frame >> 2,
     );
+  }
+
+  /** Your ship as designed in the hangar (the default until the profile has loaded). */
+  private design(): ShipDesign {
+    return profileStore.getState().profile?.ship ?? DEFAULT_SHIP;
   }
 
   private formatDistance(d: number): string {
