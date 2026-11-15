@@ -1,0 +1,103 @@
+/* The hangar dialog: a ship preview, then the part pickers, colours and trail. */
+
+.hangar {
+  width: min(680px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+
+.body {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 24px;
+  padding: 4px 4px 8px;
+  font-size: 8px;
+}
+
+.left,
+.right {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+}
+
+@media (max-width: 640px) {
+  .body {
+    grid-template-columns: 1fr;
+  }
+}
+
+.preview {
+  margin: 0 auto;
+  padding: 12px 16px;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1;
+  letter-spacing: 0;
+  white-space: pre;
+  border: 1px solid var(--ink-dim);
+  background: #000;
+}
+
+.name {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px;
+  font: inherit;
+  color: var(--ink-bright);
+  text-transform: uppercase;
+  background: #000;
+  border: 2px solid var(--ink-dim);
+}
+
+.name:focus {
+  border-color: var(--ink);
+  outline: none;
+}
+
+.picker {
+  display: grid;
+  grid-template-columns: 64px auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.pickerLabel {
+  color: var(--accent);
+}
+
+.pickerValue {
+  text-align: center;
+  color: var(--ink-bright);
+}
+
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.swatch {
+  height: 20px;
+  border: 2px solid #000;
+  box-shadow: 0 0 0 1px var(--ink-dim);
+  cursor: pointer;
+}
+
+.swatchOn {
+  box-shadow:
+    0 0 0 2px #000,
+    0 0 0 4px var(--ink-bright);
+}
+
+.swatch:focus-visible {
+  outline: 2px solid var(--ink-bright);
+  outline-offset: 2px;
+}
+
+.done {
+  display: flex;
+  justify-content: flex-end;
+}

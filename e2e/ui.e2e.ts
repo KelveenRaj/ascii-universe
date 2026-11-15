@@ -217,6 +217,39 @@ test.describe('slingshot', () => {
 test.describe('open world', () => {
   const settings = { quality: 'low', attractMode: false };
 
+  test('the hangar changes your ship, and it is saved', async ({ page }) => {
+    await openWith(page, settings, '/#/world');
+    await expect(page.getByTestId('flight-panel')).toContainText('CORE', { timeout: 30_000 });
+    await page.getByRole('button', { name: 'HANGAR' }).click();
+    const hangar = page.getByTestId('hangar');
+    await expect(hangar).toBeVisible();
+    await expect(page.getByTestId('ship-preview')).toBeVisible();
+
+    await page.getByTitle('Next hull').click();
+    await expect(page.getByTestId('pick-hull')).toHaveText('ARROW');
+    await page
+      .getByRole('radiogroup', { name: 'Ship colour' })
+      .getByRole('radio', { name: 'cyan' })
+      .click();
+    await page.getByLabel('Ship name').fill('night owl');
+    await expect(page.getByLabel('Ship name')).toHaveValue('NIGHT OWL');
+
+    await page.keyboard.press('Escape'); // closes the hangar, doesn't land
+    await expect(hangar).toHaveCount(0);
+    await expect(page).toHaveURL(/#\/world$/);
+    // closing the hangar saves straight away
+    await expect
+      .poll(
+        async () => {
+          const saved = await page.evaluate(() => localStorage.getItem('ascii-universe:pilot'));
+          const ship = JSON.parse(saved ?? '{}').ship ?? {};
+          return [ship.hull, ship.color, ship.name];
+        },
+        { timeout: 15_000 },
+      )
+      .toEqual(['arrow', 'cyan', 'NIGHT OWL']);
+  });
+
   test('FLY launches into open space, W flies, Esc lands back where you were', async ({ page }) => {
     await openWith(page, settings, '/#/sgr-a-star');
     await page.getByRole('button', { name: 'FLY > OPEN SPACE' }).click();

@@ -100,6 +100,12 @@ export function WorldOverlay() {
               {hud.action}
             </PixelButton>
           )}
+          <PixelButton
+            onClick={() => worldStore.setState({ hangarOpen: true })}
+            title="Design your ship"
+          >
+            HANGAR
+          </PixelButton>
           <PixelButton onClick={land} title="Land (Esc)">
             LAND
           </PixelButton>

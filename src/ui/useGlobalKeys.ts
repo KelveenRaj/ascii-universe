@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { navigationStore } from '@/state/navigation';
 import { settingsStore } from '@/state/settings';
+import { worldStore } from '@/state/world';
 import { uiStore } from '@/state/ui';
 import { onRenderShortcut } from '@/ui/renderShortcuts';
 
@@ -18,7 +19,9 @@ const isTextField = (t: EventTarget | null) =>
 export function useGlobalKeys(): void {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey || e.altKey || isTextField(e.target)) return;
+      // Esc never types anything, so it closes things even from a text box
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key !== 'Escape' && isTextField(e.target)) return;
       const ui = uiStore.getState();
       const nav = navigationStore.getState();
       const inPanel = e.target instanceof Element && e.target.closest('[data-ui]') !== null;
@@ -27,6 +30,7 @@ export function useGlobalKeys(): void {
         if (ui.textExport !== null) ui.setTextExport(null);
         else if (ui.helpOpen) ui.setHelpOpen(false);
         else if (ui.panelOpen) ui.setPanelOpen(false);
+        else if (worldStore.getState().hangarOpen) worldStore.setState({ hangarOpen: false });
         else if (nav.info) nav.setInfo(false);
         else if (nav.game) nav.setGame(null);
         else if (nav.world) nav.setWorld(false);

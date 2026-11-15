@@ -16,6 +16,7 @@ import { SignalLost } from '@/ui/SignalLost';
 import { TextExport } from '@/ui/TextExport';
 import { useGlobalKeys } from '@/ui/useGlobalKeys';
 import { WorldOverlay } from '@/ui/WorldOverlay';
+import { Hangar } from '@/ui/Hangar';
 import { usePaletteTheme } from '@/ui/usePaletteTheme';
 
 export default function App() {
@@ -38,6 +39,7 @@ export default function App() {
       <InfoPanel />
       <GameOverlay />
       <WorldOverlay />
+      <Hangar />
       {!game && !world && <Navigator />}
       <TopBar />
       <SettingsPanel />

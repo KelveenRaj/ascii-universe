@@ -37,6 +37,8 @@ export interface WorldState {
   /** Caption for the warp into that scene ('ENTERING SOL'); null for the launch's. */
   warpLabel: string | null;
   hud: WorldHud | null;
+  /** The hangar (ship designer) is open. */
+  hangarOpen: boolean;
   requests: WorldRequest[];
   request(r: WorldRequest): void;
   /** Returns and clears the pending requests. */
@@ -47,6 +49,7 @@ export const worldStore = createStore<WorldState>()((set, get) => ({
   sceneId: 'world-galaxy',
   warpLabel: null,
   hud: null,
+  hangarOpen: false,
   requests: [],
   request: (r) => set({ requests: [...get().requests, r] }),
   takeRequests: () => {
