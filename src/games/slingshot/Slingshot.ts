@@ -9,7 +9,7 @@ import type {
   GameInstance,
   GameView,
 } from '@/engine/game/Game';
-import { drawShip } from '@/games/slingshot/ship';
+import { drawShip } from '@/world/ship/sprite';
 import { Flight } from '@/scenes/black-hole/flight';
 import { SGR_A_SECONDS_PER_UNIT } from '@/scenes/black-hole/orbit';
 import { BLACK_HOLE_PARAMS } from '@/scenes/black-hole/params';

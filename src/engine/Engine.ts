@@ -18,6 +18,7 @@ import type { SceneInstance, SceneModule } from '@/engine/scene/SceneModule';
 import { Warp } from '@/engine/transition/Warp';
 import { activeBody, activeScene, navigationStore } from '@/state/navigation';
 import { sceneParamsStore } from '@/state/sceneParams';
+import { WorldHost } from '@/world/WorldHost';
 
 const FOV_DEG = 50;
 const STATS_INTERVAL_MS = 250;
@@ -37,7 +38,8 @@ const CLICK_SLOP_PX = 5;
  * The scene follows the navigation store: when you move to a body rendered by another scene, a
  * Warp plays and the scene is swapped at its midpoint, while the screen is dark. Clicking a label
  * that has a `target` moves there. A minigame in the route runs on top of the scene (GameHost):
- * it gets the input and the text layer, and the camera is parked on the game's preset.
+ * it gets the input and the text layer, and the camera is parked on the game's preset. In the open
+ * world (WorldHost) you fly your ship instead: it takes the input and places the camera behind you.
  */
 export class Engine {
   private readonly canvas: HTMLCanvasElement;
@@ -59,6 +61,7 @@ export class Engine {
   private labelHits: Array<{ rect: LabelRect; target: string }> = [];
   private pressAt: { x: number; y: number } | null = null;
   private readonly games: GameHost;
+  private readonly world: WorldHost;
   private readonly gameView: GameView;
   /** The running game placed the camera itself last frame. */
   private gameCameraFixed = false;
@@ -95,6 +98,7 @@ export class Engine {
     this.controller.attractEnabled = settings.attractMode;
     this.input = new InputManager(canvas, this.controller);
     this.gameView = { camera: this.camera, tanHalfFov, aspect: 16 / 9 };
+    this.world = new WorldHost(canvas);
     this.games = new GameHost(
       (game) => this.onGameStart(game),
       () => this.onGameStop(),
@@ -128,7 +132,7 @@ export class Engine {
 
   private onSettingsChange(s: SettingsState, prev: SettingsState): void {
     const relayout = this.display.onSettingsChange(s, prev);
-    if (s.attractMode !== prev.attractMode && !this.games.active) {
+    if (s.attractMode !== prev.attractMode && !this.games.active && !this.world.active) {
       this.controller.attractEnabled = s.attractMode;
     }
     if (s.quality !== prev.quality && s.quality === 'auto') this.governor.reset();
@@ -239,6 +243,33 @@ export class Engine {
     this.controller.apply(this.camera);
   }
 
+  // ---- open world -------------------------------------------------------------------------
+
+  /** Starts or stops flying: wanted while the route is in the world and its scene is on screen. */
+  private syncWorld(): void {
+    const wanted =
+      navigationStore.getState().world && !this.warp && activeScene().id === this.sceneId;
+    if (wanted === this.world.active) return;
+    this.world.sync(wanted);
+    if (wanted) {
+      this.input.setMode('none');
+      this.controller.attractEnabled = false;
+    } else {
+      this.input.setMode('all');
+      this.controller.attractEnabled = settingsStore.getState().attractMode;
+    }
+  }
+
+  /** Puts the camera where the flight's chase camera wants it. */
+  private applyWorldCamera(): void {
+    const pose = this.world.camera();
+    if (!pose) return;
+    this.camera.position.copy(pose.position);
+    this.camera.up.copy(pose.up);
+    this.camera.lookAt(pose.target);
+    this.camera.updateMatrixWorld(true);
+  }
+
   // ---- scene switching ----------------------------------------------------------------------
 
   /** Starts a warp when navigation has moved to a body rendered by another scene. */
@@ -248,7 +279,10 @@ export class Engine {
     if (module.id === this.sceneId) return;
     const body = activeBody();
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
-    this.warp = new Warp(`WARP > ${body.designation ?? body.name.toUpperCase()}`, reduced);
+    const label = navigationStore.getState().world
+      ? 'LAUNCH > OPEN SPACE'
+      : `WARP > ${body.designation ?? body.name.toUpperCase()}`;
+    this.warp = new Warp(label, reduced);
   }
 
   /** Swaps the running scene for `module` (at a warp's midpoint, while the screen is dark). */
@@ -342,11 +376,15 @@ export class Engine {
     this.checkNavigation();
     this.advanceWarp(dt);
     this.games.sync(this.wantedGame());
+    this.syncWorld();
     this.input.update(dt);
     this.controller.update(dt);
-    if (this.games.active) {
-      const grid = this.display.currentGrid;
-      this.gameView.aspect = grid ? grid.cols / grid.rows : this.drawSize.x / this.drawSize.y;
+    const grid = this.display.currentGrid;
+    this.gameView.aspect = grid ? grid.cols / grid.rows : this.drawSize.x / this.drawSize.y;
+    if (this.world.active) {
+      this.world.update(dt, s.paused || this.frozenTime !== null);
+      this.applyWorldCamera();
+    } else if (this.games.active) {
       this.games.update(dt, this.gameView);
       this.applyGameCamera();
     } else {
@@ -374,7 +412,8 @@ export class Engine {
   }
 
   /**
-   * Repaints the text layer: the warp while one runs, else the game, else scene labels (ASCII
+   * Repaints the text layer: the warp while one runs, else your ship in the open world, else the
+   * game, else scene labels (ASCII
    * final view only; the layer is left empty otherwise).
    */
   private drawLabels(s: SettingsState): void {
@@ -384,6 +423,10 @@ export class Engine {
     if (!DisplayPipeline.asciiActive(s)) return;
     if (this.warp) {
       this.warp.draw(text);
+      return;
+    }
+    if (this.world.active) {
+      this.world.draw(text, this.gameView);
       return;
     }
     if (this.games.active) {
@@ -424,6 +467,7 @@ export class Engine {
     this.canvas.removeEventListener('click', this.onClick);
     this.unsubscribers.forEach((off) => off());
     this.games.dispose();
+    this.world.dispose();
     this.input.dispose();
     this.scene.dispose();
     this.display.dispose();

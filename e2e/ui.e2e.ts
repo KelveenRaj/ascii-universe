@@ -212,3 +212,45 @@ test.describe('slingshot', () => {
     await expect(page).toHaveURL(/#\/sgr-a-star$/);
   });
 });
+
+/** The open world: launching from the Navigator, flying, landing. */
+test.describe('open world', () => {
+  const settings = { quality: 'low', attractMode: false };
+
+  test('FLY launches into open space, W flies, Esc lands back where you were', async ({ page }) => {
+    await openWith(page, settings, '/#/sgr-a-star');
+    await page.getByRole('button', { name: 'FLY > OPEN SPACE' }).click();
+    await expect(page).toHaveURL(/#\/world$/);
+    const flight = page.getByTestId('flight-panel');
+    await expect(flight).toContainText('THROTTLE', { timeout: 30_000 });
+    await expect(page.getByLabel('Navigator')).toHaveCount(0);
+    await expect(page.getByLabel('Status')).toHaveCount(0);
+
+    await page.locator('canvas').click({ position: { x: 5, y: 5 } }); // focus the page
+    await page.keyboard.down('KeyW');
+    await expect(flight).not.toContainText('THROTTLE0%', { timeout: 10_000 });
+    await page.keyboard.up('KeyW');
+    await expect(flight.getByText('0 LY/S')).toHaveCount(0, { timeout: 15_000 });
+
+    await page.keyboard.press('Escape');
+    await expect(page).toHaveURL(/#\/sgr-a-star$/);
+    await expect(page.getByLabel('Status')).toContainText('Rs', { timeout: 30_000 });
+  });
+
+  test('#/world opens straight into flight, and your spot is saved', async ({ page }) => {
+    await openWith(page, settings, '/#/world');
+    await expect(page.getByTestId('flight-panel')).toContainText('CORE', { timeout: 30_000 });
+    await page.getByRole('button', { name: 'LAND' }).click();
+    await expect(page).toHaveURL(/#\/milky-way$/);
+    // the engine lands (and saves) on its next frame
+    await expect
+      .poll(
+        async () => {
+          const saved = await page.evaluate(() => localStorage.getItem('ascii-universe:pilot'));
+          return JSON.parse(saved ?? '{}').location?.loc?.layer;
+        },
+        { timeout: 15_000 },
+      )
+      .toBe('galaxy');
+  });
+});
