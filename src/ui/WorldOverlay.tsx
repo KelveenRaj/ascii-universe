@@ -22,8 +22,8 @@ export function WorldOverlay() {
   const jump = () => worldStore.getState().request({ type: 'jump' });
   const pick = (id: string) => worldStore.getState().request({ type: 'target', id });
   const targets = hud?.targets ?? [];
-  // the list is nearby systems first, then landmarks (which have no ':' in their ids)
-  const firstLandmark = targets.findIndex((t) => !t.id.includes(':'));
+  // in open space the list is nearby systems first, then landmarks (no ':' or '/' in their ids)
+  const firstLandmark = targets.findIndex((t) => !t.id.includes(':') && !t.id.includes('/'));
 
   return (
     <>
@@ -32,7 +32,7 @@ export function WorldOverlay() {
         aria-label="Flight"
         data-testid="flight-panel"
       >
-        <div className={styles.title}>OPEN SPACE</div>
+        <div className={styles.title}>{hud?.title ?? 'OPEN SPACE'}</div>
         <dl className={styles.grid}>
           {hud?.rows.map(([k, v]) => (
             <div key={k} className={styles.row}>
@@ -92,9 +92,12 @@ export function WorldOverlay() {
           {hud?.hint}
         </div>
         <div className={styles.pads}>
-          {hud?.canJump && (
-            <PixelButton onClick={jump} title="Jump to the target (J)">
-              JUMP
+          {hud?.action && (
+            <PixelButton
+              onClick={jump}
+              title={hud.action === 'JUMP' ? 'Jump to the target (J)' : 'Back to open space (J)'}
+            >
+              {hud.action}
             </PixelButton>
           )}
           <PixelButton onClick={land} title="Land (Esc)">

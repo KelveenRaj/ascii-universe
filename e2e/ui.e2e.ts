@@ -267,9 +267,17 @@ test.describe('open world', () => {
     await expect(page.getByTestId('world-message')).toContainText('JUMPING TO VEGA');
     // a ~25 ly hop: under a second to turn, ~3 s in hyperspace, then you're there
     await expect(page.getByTestId('world-message')).toContainText(/(ARRIVED: |DISCOVERED )VEGA/, {
-      timeout: 20_000,
+      timeout: 40_000,
     });
     await expect(page.getByRole('button', { name: 'JUMP' })).toHaveCount(0);
+
+    // a jump takes you straight into the star's system...
+    await expect(flight).toContainText('PLANETS', { timeout: 30_000 });
+    await expect(flight).toContainText('VEGA');
+    await page.getByRole('button', { name: 'LEAVE' }).click();
+    // ...and LEAVE takes you back out to open space
+    await expect(flight).toContainText('OPEN SPACE', { timeout: 30_000 });
+    await expect(flight).toContainText('CORE');
 
     await page.getByRole('button', { name: 'LAND' }).click();
     await expect

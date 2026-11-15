@@ -78,8 +78,22 @@ export interface NearStar {
   size: number;
 }
 
+/** A sphere for a star-system layer to draw, relative to the camera. */
+export interface SystemBody {
+  rel: readonly [number, number, number];
+  radius: number;
+  material: number;
+  /** Varies the surface pattern, 0…1. */
+  seed: number;
+  /** Ring plane normal and outer radius, if it has rings. */
+  ring?: { normal: readonly [number, number, number]; outer: number };
+}
+
 export interface WorldFrame {
+  /** Point stars (the galaxy layer). */
   stars: readonly NearStar[];
+  /** The star and planets (a system layer). */
+  system?: { star: SystemBody; planets: readonly SystemBody[] };
 }
 
 export interface SceneInstance<P = Record<string, ParamValue>> {
