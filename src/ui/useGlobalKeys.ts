@@ -11,7 +11,7 @@ const isTextField = (t: EventTarget | null) =>
 
 /**
  * UI-level shortcuts: Tab or ` opens/closes settings, ? help, H the HUD, I the info card, Backspace
- * warps back out, Esc closes overlays.
+ * warps back out (or lands, in the open world), Esc closes overlays.
  * Inside the settings panel, Tab keeps its normal job of moving focus between controls.
  * Also wires up the render shortcuts (see renderShortcuts.ts).
  */
@@ -29,6 +29,7 @@ export function useGlobalKeys(): void {
         else if (ui.panelOpen) ui.setPanelOpen(false);
         else if (nav.info) nav.setInfo(false);
         else if (nav.game) nav.setGame(null);
+        else if (nav.world) nav.setWorld(false);
         return;
       }
       if (e.repeat) return;
@@ -39,8 +40,9 @@ export function useGlobalKeys(): void {
         ui.setHelpOpen(!ui.helpOpen);
       } else if (e.key === 'Backspace' && !inPanel) {
         e.preventDefault();
-        // in a game, Backspace only quits the game
+        // in a game, Backspace only quits the game; in the open world it lands
         if (nav.game) nav.setGame(null);
+        else if (nav.world) nav.setWorld(false);
         else nav.goUp();
       } else if ((e.key === 'i' || e.key === 'I') && !inPanel && !nav.game) {
         nav.setInfo(!nav.info);

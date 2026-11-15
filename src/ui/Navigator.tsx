@@ -11,11 +11,12 @@ const short = (b: { designation?: string; name: string }) => b.designation ?? b.
 
 /**
  * Where you are and where you can go, bottom right: the path from the hub (each step warps back
- * there), a warp button per place inside the current one, and a button per minigame played here.
+ * there), a warp button per place inside the current one, a button per minigame played here, and
+ * one to launch into the open world.
  */
 export function Navigator() {
   const bodyId = useStore(navigationStore, (s) => s.bodyId);
-  const { goTo, setGame } = navigationStore.getState();
+  const { goTo, setGame, setWorld } = navigationStore.getState();
   const path = pathTo(bodyId);
   const children = childrenOf(bodyId);
   const games = gamesAt(bodyId);
@@ -42,20 +43,21 @@ export function Navigator() {
           </li>
         ))}
       </ol>
-      {(children.length > 0 || games.length > 0) && (
-        <div className={styles.warps}>
-          {children.map((b) => (
-            <PixelButton key={b.id} onClick={() => goTo(b.id)} title={`Warp to ${b.name}`}>
-              WARP &gt; {short(b)}
-            </PixelButton>
-          ))}
-          {games.map((g) => (
-            <PixelButton key={g.id} onClick={() => setGame(g.id)} title={g.blurb}>
-              PLAY &gt; {g.title.toUpperCase()}
-            </PixelButton>
-          ))}
-        </div>
-      )}
+      <div className={styles.warps}>
+        {children.map((b) => (
+          <PixelButton key={b.id} onClick={() => goTo(b.id)} title={`Warp to ${b.name}`}>
+            WARP &gt; {short(b)}
+          </PixelButton>
+        ))}
+        {games.map((g) => (
+          <PixelButton key={g.id} onClick={() => setGame(g.id)} title={g.blurb}>
+            PLAY &gt; {g.title.toUpperCase()}
+          </PixelButton>
+        ))}
+        <PixelButton onClick={() => setWorld(true)} title="Fly your own ship through the galaxy">
+          FLY &gt; OPEN SPACE
+        </PixelButton>
+      </div>
     </nav>
   );
 }

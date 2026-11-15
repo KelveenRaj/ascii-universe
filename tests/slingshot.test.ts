@@ -11,7 +11,7 @@ import {
   SIM_RATE,
   Slingshot,
 } from '@/games/slingshot/Slingshot';
-import { shipPose } from '@/games/slingshot/ship';
+import { shipPose } from '@/world/ship/sprite';
 import { highScoreStore } from '@/state/game';
 
 /** Roughly the start view. */

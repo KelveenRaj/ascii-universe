@@ -12,6 +12,7 @@ const at = (bodyId: string, info = false, game: string | null = null): Route => 
   bodyId,
   info,
   game,
+  world: false,
 });
 
 describe('hash routes', () => {
@@ -90,5 +91,37 @@ describe('navigation store', () => {
     nav.setGame('slingshot');
     nav.goUp(); // leaving the place ends the game
     expect(navigationStore.getState()).toMatchObject({ bodyId: 'milky-way', game: null });
+  });
+
+  it('launches into the open world and lands back at the same body', () => {
+    const nav = navigationStore.getState();
+    nav.goTo('sgr-a-star');
+    nav.setInfo(true);
+    nav.setWorld(true);
+    expect(navigationStore.getState()).toMatchObject({ world: true, info: false, game: null });
+    expect(activeScene().id).toBe('world-galaxy');
+    // no cards, games or going up while flying
+    nav.setInfo(true);
+    nav.setGame('slingshot');
+    nav.goUp();
+    expect(navigationStore.getState()).toMatchObject({
+      bodyId: 'sgr-a-star',
+      world: true,
+      info: false,
+      game: null,
+    });
+    nav.setWorld(false);
+    expect(activeScene().id).toBe('black-hole');
+    nav.setWorld(true);
+    nav.goTo('milky-way'); // warping somewhere lands you
+    expect(navigationStore.getState()).toMatchObject({ bodyId: 'milky-way', world: false });
+  });
+});
+
+describe('open world route', () => {
+  it('parses and formats #/world', () => {
+    expect(parseHash('#/world')).toEqual({ ...at(DEFAULT_BODY_ID), world: true });
+    expect(parseHash('#/world/anything')).toEqual({ ...at(DEFAULT_BODY_ID), world: true });
+    expect(formatHash({ ...at('sgr-a-star'), world: true })).toBe('#/world');
   });
 });
