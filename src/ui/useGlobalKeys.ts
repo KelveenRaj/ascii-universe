@@ -4,6 +4,7 @@ import { settingsStore } from '@/state/settings';
 import { worldStore } from '@/state/world';
 import { uiStore } from '@/state/ui';
 import { onRenderShortcut } from '@/ui/renderShortcuts';
+import { needsCallsign } from '@/world/pilot';
 
 const isTextField = (t: EventTarget | null) =>
   t instanceof HTMLInputElement && t.type !== 'checkbox' && t.type !== 'range'
@@ -30,6 +31,8 @@ export function useGlobalKeys(): void {
         if (ui.textExport !== null) ui.setTextExport(null);
         else if (ui.helpOpen) ui.setHelpOpen(false);
         else if (ui.panelOpen) ui.setPanelOpen(false);
+        else if (needsCallsign())
+          return; // the new pilot dialog takes Esc as LAUNCH itself
         else if (worldStore.getState().hangarOpen) worldStore.setState({ hangarOpen: false });
         else if (nav.info) nav.setInfo(false);
         else if (nav.game) nav.setGame(null);

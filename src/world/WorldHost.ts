@@ -46,8 +46,8 @@ const SAVE_EVERY_S = 10;
 const LY = 1000;
 
 const CONTROLS = 'W/S THROTTLE  ARROWS/DRAG STEER  Q/E ROLL  SHIFT BOOST  X STOP  T TARGET';
-const HINT_GALAXY = `${CONTROLS}  J JUMP  ESC LAND`;
-const HINT_INSIDE = `${CONTROLS}  J LEAVE  ESC LAND`;
+const HINT_GALAXY = `${CONTROLS}  J JUMP  ESC LAND  ? HELP`;
+const HINT_INSIDE = `${CONTROLS}  J LEAVE  ESC LAND  ? HELP`;
 
 /** Must match NEAR_MAX in the galaxy layer's shader. */
 const STAR_SLOTS = 48;
@@ -236,6 +236,7 @@ export class WorldHost {
   }
 
   private stop(): void {
+    track('world_land', { place: this.inner?.place.id ?? 'open-space' });
     this.save();
     void profileStore.getState().flush();
     this.flight = null;

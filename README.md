@@ -34,6 +34,25 @@ labels included. Things in the scene get a name tag and target brackets (**L** t
 
 ![Copy as text dialog](docs/copy-as-text.png)
 
+### Open space
+
+**FLY > OPEN SPACE** in the navigator (or `#/world`) puts you in your own ASCII ship, free to roam the
+Milky Way:
+
+- Fly anywhere in the disk, or jump to a nearby star and drop into its system.
+- Visit the landmarks: Sol (with all eight planets), Sirius, Vega, Polaris, Betelgeuse, Rigel,
+  Deneb, and Sgr A* itself.
+- Every star you visit goes in your log.
+
+In the **HANGAR** you build your ship from hulls, wings and engines, and pick its colour, its name
+and the trail it leaves. Your ship, callsign, log and last position are saved in the browser.
+
+Keys: **W / S** throttle · **arrows** or **drag** steer · **Q / E** roll · **Shift** boost · **X**
+stop · **T** target what you face · **J** jump (or leave a system) · **Esc** land. On touch,
+drag to steer and use the buttons for the rest. More in [docs/world.md](docs/world.md).
+
+![Flying past Saturn](docs/open-world.png)
+
 ### Slingshot
 
 At Sgr A* there's a minigame: **PLAY > SLINGSHOT** in the navigator (or `#/sgr-a-star/game/slingshot`).
@@ -164,13 +183,16 @@ src/
     scene/    SceneModule (the contract every place implements) and its ParamSchema
     game/     GameModule (the contract every minigame implements), GameHost, game input
   games/      one folder per minigame, plus registry.ts
+  profile/    the pilot profile: schema, migration, save repos (browser now, server later), events
     slingshot/   fling a ship past Sgr A* (game rules, ship sprites)
   scenes/     one folder per place, plus registry.ts
     milky-way/   the hub: galaxy shader, layout from the published numbers, camera presets, params
     black-hole/  Sgr A*: ray-marching pass + shaders, light, orbit and 3D flight physics, camera presets, params
+    world-galaxy/, world-system/  the open world's galaxy (from inside the disk) and star systems
   shaders/    display passes and shared GLSL includes
   state/      settings (persisted), scene params (persisted per scene), navigation (URL hash), game HUD + high scores, stats, UI, commands
-  ui/         HUD, info card, game overlay, navigator, settings panel, help, boot screen, copy-as-text, overlays
+  ui/         HUD, info card, game and world overlays, hangar, new pilot, navigator, settings panel, help, boot screen, copy-as-text
+  world/      the open world (see docs/world.md): WorldHost, layers, generation, flight, ship parts
 e2e/          Playwright: screenshot tests (baselines in e2e/__screenshots__) and UI checks
 tests/        content (every fact cited), hash routes, warps, geodesics, orbits, 3D flight, slingshot, camera, scenes, glyphs, palettes, grid, settings, quality governor, text export
 ```

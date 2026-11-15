@@ -213,12 +213,46 @@ test.describe('slingshot', () => {
   });
 });
 
+/** A new pilot's first flight opens on the callsign dialog: take the suggested callsign. */
+async function launchPilot(page: Page) {
+  await page.getByTestId('onboarding').waitFor({ timeout: 30_000 });
+  await page.getByRole('button', { name: 'LAUNCH' }).click();
+  await expect(page.getByTestId('onboarding')).toHaveCount(0);
+}
+
+const savedPilot = (page: Page) =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('ascii-universe:pilot') ?? '{}'));
+
 /** The open world: launching from the Navigator, flying, landing. */
 test.describe('open world', () => {
   const settings = { quality: 'low', attractMode: false };
 
+  test('a new pilot picks a callsign once, and Esc launches instead of landing', async ({
+    page,
+  }) => {
+    await openWith(page, settings, '/#/world');
+    const box = page.getByLabel('Callsign');
+    await expect(box).toHaveValue(/^[A-Z]+-\d\d$/, { timeout: 30_000 }); // a suggestion
+    await box.fill('star fox 9');
+    await expect(box).toHaveValue('STAR FOX 9');
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('onboarding')).toHaveCount(0);
+    await expect(page).toHaveURL(/#\/world$/);
+    await expect.poll(async () => (await savedPilot(page)).pilot?.callsign).toBe('STAR FOX 9');
+
+    // the controls card is still there under ?
+    await page.getByRole('button', { name: '?' }).click();
+    await expect(page.getByRole('dialog')).toContainText('THROTTLE UP / DOWN');
+    await page.keyboard.press('Escape');
+
+    await page.reload();
+    await expect(page.getByTestId('flight-panel')).toContainText('CORE', { timeout: 30_000 });
+    await expect(page.getByTestId('onboarding')).toHaveCount(0);
+  });
+
   test('the hangar changes your ship, and it is saved', async ({ page }) => {
     await openWith(page, settings, '/#/world');
+    await launchPilot(page);
     await expect(page.getByTestId('flight-panel')).toContainText('CORE', { timeout: 30_000 });
     await page.getByRole('button', { name: 'HANGAR' }).click();
     const hangar = page.getByTestId('hangar');
@@ -254,6 +288,7 @@ test.describe('open world', () => {
     await openWith(page, settings, '/#/sgr-a-star');
     await page.getByRole('button', { name: 'FLY > OPEN SPACE' }).click();
     await expect(page).toHaveURL(/#\/world$/);
+    await launchPilot(page);
     const flight = page.getByTestId('flight-panel');
     await expect(flight).toContainText('THROTTLE', { timeout: 30_000 });
     await expect(page.getByLabel('Navigator')).toHaveCount(0);
@@ -272,6 +307,7 @@ test.describe('open world', () => {
 
   test('#/world opens straight into flight, and your spot is saved', async ({ page }) => {
     await openWith(page, settings, '/#/world');
+    await launchPilot(page);
     await expect(page.getByTestId('flight-panel')).toContainText('CORE', { timeout: 30_000 });
     await page.getByRole('button', { name: 'LAND' }).click();
     await expect(page).toHaveURL(/#\/milky-way$/);
@@ -291,6 +327,7 @@ test.describe('open world', () => {
     page,
   }) => {
     await openWith(page, settings, '/#/world');
+    await launchPilot(page);
     const flight = page.getByTestId('flight-panel');
     await expect(flight).toContainText('CORE', { timeout: 30_000 });
     await page.getByTestId('target-list').getByRole('button', { name: /^VEGA/ }).click();
@@ -323,5 +360,33 @@ test.describe('open world', () => {
         { timeout: 15_000 },
       )
       .toEqual([1, 'string']);
+  });
+});
+
+/** Flying on a phone: drag steers (as with a mouse), the on-screen buttons do the rest. */
+test.describe('open world on a touch screen', () => {
+  test.use({ viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true });
+
+  test('the touch buttons throttle up, and stop', async ({ page }) => {
+    await openWith(page, { quality: 'low', attractMode: false }, '/#/world');
+    await page.getByTestId('onboarding').waitFor({ timeout: 30_000 });
+    await page.getByRole('button', { name: 'LAUNCH' }).tap();
+    const flight = page.getByTestId('flight-panel');
+    await expect(flight).toContainText('THROTTLE', { timeout: 30_000 });
+    await expect(page.getByTestId('touch-pads')).toBeVisible();
+
+    // a real finger held down, not a tap: the buttons act while held
+    const hold = async (name: string, ms: number) => {
+      const b = (await page.getByRole('button', { name }).boundingBox())!;
+      const cdp = await page.context().newCDPSession(page);
+      const at = { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [at] });
+      await page.waitForTimeout(ms);
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    };
+    await hold('Throttle up (W)', 1500);
+    await expect(flight).not.toContainText(/THROTTLE\s*0%/);
+    await hold('Stop (X)', 300);
+    await expect(flight).toContainText(/THROTTLE\s*0%/);
   });
 });

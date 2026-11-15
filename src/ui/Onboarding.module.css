@@ -1,0 +1,47 @@
+/* The new pilot's welcome: callsign, then the controls card. */
+
+.onboarding {
+  width: min(640px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+
+.body {
+  display: grid;
+  gap: 12px;
+  font-size: 8px;
+}
+
+.intro {
+  margin: 0;
+  padding: 0 16px;
+  line-height: 1.8;
+  color: var(--ink);
+}
+
+.body > section {
+  padding: 0 16px;
+}
+
+.callsign {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px;
+  font: inherit;
+  font-size: 16px;
+  color: var(--ink-bright);
+  text-transform: uppercase;
+  background: #000;
+  border: 2px solid var(--ink-dim);
+}
+
+.callsign:focus {
+  border-color: var(--ink);
+  outline: none;
+}
+
+.launch {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 16px 16px;
+}
