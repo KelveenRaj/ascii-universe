@@ -70,6 +70,13 @@ const VIEWS: Array<{
   // the open world: parked above the Sun's spot looking at the core, and turned along the disk
   { name: 'world-sun-to-core', query: 'wpos=0,0.02,27&crt=0', place: 'world' },
   { name: 'world-along-arm', query: 'wpos=8,0.3,20&wyaw=60&wpitch=-8', place: 'world' },
+  // inside places: Saturn and its rings in the Solar System, and Sgr A* from its own layer
+  {
+    name: 'world-saturn',
+    query: 'wplace=sol&wpos=-20.5,0.6,-8.55&wyaw=90&crt=0',
+    place: 'world',
+  },
+  { name: 'world-sgr-a-star', query: 'wplace=sgr-a-star&wpos=0,5,48&wpitch=-4', place: 'world' },
 ];
 
 for (const view of VIEWS) {

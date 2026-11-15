@@ -4,15 +4,22 @@ import type { TextLayer } from '@/engine/display/TextLayer';
 import type { GameView } from '@/engine/game/Game';
 import type { WorldFrame } from '@/engine/scene/SceneModule';
 import { track } from '@/profile/EventSink';
+import type { SceneId } from '@/scenes/registry';
 import { GALAXY } from '@/scenes/milky-way/layout';
 import { profileStore } from '@/state/profile';
 import { worldStore, type WorldHud, type WorldTargetRow } from '@/state/world';
-import { ChaseCamera } from '@/world/flight/ChaseCamera';
+import { ChaseCamera, type ChaseRig } from '@/world/flight/ChaseCamera';
 import { FlightInput } from '@/world/flight/FlightInput';
 import { FlightModel, GALAXY_TUNING, NO_CONTROLS } from '@/world/flight/FlightModel';
 import { ALIGN_S, HyperJump } from '@/world/flight/HyperJump';
 import { SpaceDust } from '@/world/flight/SpaceDust';
+import { findInterior } from '@/world/gen/planets';
+import { findSystem } from '@/world/gen/sector';
+import { findLandmark } from '@/world/landmarks';
+import { BlackHoleLayer, blocked, keepOut, SystemLayer, type InnerLayer } from '@/world/layers';
+import type { WorldLocation } from '@/world/location';
 import {
+  add,
   distance,
   dot,
   length,
@@ -21,6 +28,7 @@ import {
   quatLookAt,
   quatMul,
   quatNlerp,
+  scale,
   sub,
   type Quat,
   type Vec3d,
@@ -36,8 +44,9 @@ const SAVE_EVERY_S = 10;
 /** kly → ly */
 const LY = 1000;
 
-const HINT =
-  'W/S THROTTLE  ARROWS/DRAG STEER  Q/E ROLL  SHIFT BOOST  X STOP  T TARGET  J JUMP  ESC LAND';
+const CONTROLS = 'W/S THROTTLE  ARROWS/DRAG STEER  Q/E ROLL  SHIFT BOOST  X STOP  T TARGET';
+const HINT_GALAXY = `${CONTROLS}  J JUMP  ESC LAND`;
+const HINT_INSIDE = `${CONTROLS}  J LEAVE  ESC LAND`;
 
 /** Must match NEAR_MAX in the galaxy layer's shader. */
 const STAR_SLOTS = 48;
@@ -45,15 +54,21 @@ const STAR_SLOTS = 48;
 const NEARBY_SYSTEMS = 40;
 /** Procedural systems in the overlay's list. */
 const LISTED_SYSTEMS = 5;
-/** A jump drops you this far short of a star (kly), so it sits in front of you, not on you. */
+/** A jump drops you this far short of a star (kly), then you enter its system. */
 const STAND_OFF = 0.006;
 /** …and further from the black hole. */
 const STAND_OFF_SGR = 0.03;
 /** Within this (kly) of a star counts as a visit. */
 const VISIT = 0.01;
 const VISIT_SGR = 0.04;
+/** Fly this close (kly) to a star, or the black hole, and you go in. */
+const ENTER = 0.0015;
+const ENTER_SGR = 0.012;
 /** How long a notice stays up (s). */
 const MESSAGE_S = 4;
+
+const GALAXY_RIG: ChaseRig = { back: 0.004, up: 0.0012, ahead: 0.01 };
+const GALAXY_DUST = 0.03;
 
 const isSgr = (t: Target) => t.id === 'sgr-a-star';
 const standOff = (t: Target) => (isSgr(t) ? STAND_OFF_SGR : STAND_OFF);
@@ -62,22 +77,51 @@ type Jump =
   | { phase: 'align'; t: number; from: Quat; to: Quat; target: Target }
   | { phase: 'travel'; hop: HyperJump; target: Target };
 
+type DevStart = { pos: Vec3d; orient: Quat; place: string | null; target: string | null };
+
 const toV3 = (v: Vec3d, out: THREE.Vector3) => out.set(v[0], v[1], v[2]);
+
+/** A place in open space as a target, from its id (no neighbourhood needed). */
+function placeTarget(id: string): Target | null {
+  const l = findLandmark(id);
+  if (l) {
+    return {
+      id,
+      name: l.name,
+      kind: l.kind,
+      pos: l.pos,
+      lum: l.lum,
+      material: l.material,
+      landmark: l,
+    };
+  }
+  const s = findSystem(id);
+  if (!s) return null;
+  return { id, name: s.name, kind: '', pos: s.pos, lum: s.lum, material: s.material, system: s };
+}
+
+/** The inside of a place you can enter, or null. */
+function layerFor(place: Target): InnerLayer | null {
+  if (isSgr(place)) return new BlackHoleLayer(place);
+  const interior = findInterior(place.id);
+  return interior ? new SystemLayer(place, interior) : null;
+}
 
 /**
  * Runs the open world for the Engine while you're flying: your ship's flight, the chase camera
- * the scene is seen through, the stars around you (for the scene to draw), targets and
- * hyperspace jumps, the specks and the ship drawn into the text layer, the readout for the
- * overlay, and saving where you are and what you've found to your pilot profile.
+ * the scene is seen through, what the scene should draw around you, targets and hyperspace jumps,
+ * going into star systems (and Sgr A*) and back out, the specks and the ship drawn into the text
+ * layer, the readout for the overlay, and saving where you are and what you've found.
  *
- * For now there's one layer, the galaxy (kly). Star systems and landmarks get their own layers
- * next, each in its own units.
+ * Open space (the galaxy, in kly) is the default layer; inside a place, an InnerLayer takes over
+ * with its own scene and units. Changing layer sets the world's scene, and the Engine plays a
+ * warp to it.
  */
 export class WorldHost {
   private readonly input: FlightInput;
   private flight: FlightModel | null = null;
-  private readonly chase = new ChaseCamera({ back: 0.004, up: 0.0012, ahead: 0.01 });
-  private readonly dust = new SpaceDust(0.03);
+  private chase = new ChaseCamera(GALAXY_RIG);
+  private dust = new SpaceDust(GALAXY_DUST);
   private readonly pose = {
     position: new THREE.Vector3(),
     target: new THREE.Vector3(),
@@ -92,24 +136,40 @@ export class WorldHost {
   private frame = 0;
   private hudJson = '';
   private readonly hood = new Neighbourhood();
-  /** Procedural systems near the ship this frame, nearest first. */
+  /** Procedural systems near the ship this frame, nearest first (open space only). */
   private nearby: Target[] = [];
+  /** The place you're inside, or null in open space. */
+  private inner: InnerLayer | null = null;
   private target: Target | null = null;
   private jump: Jump | null = null;
   private message: { text: string; left: number } | null = null;
   /** Places you're within visiting range of, so a visit counts once per stay. */
   private visiting = new Set<string>();
   private camPos: Vec3d = [0, 0, 0];
-  /** Dev only: a fixed start (?wpos=x,y,z&wyaw=deg&wpitch=deg), so screenshots are reproducible. */
-  private readonly devStart: { pos: Vec3d; orient: Quat; target: string | null } | null;
+  /** The last frame handed to a scene, kept for the old scene while a warp swaps it out. */
+  private lastFrame: { sceneId: string; frame: WorldFrame } | null = null;
+  /**
+   * Dev only: a fixed start, so screenshots are reproducible: ?wpos=x,y,z&wyaw=deg&wpitch=deg,
+   * plus &wplace=id to start inside a place (wpos then in its units) and &wtarget=id.
+   */
+  private readonly devStart: DevStart | null;
 
   constructor(canvas: HTMLElement) {
     this.input = new FlightInput(canvas);
     this.devStart = import.meta.env.DEV ? readDevStart() : null;
+    // a dev start inside a place opens straight on its scene (no warp), for screenshots
+    const devPlace = this.devStart?.place ? placeTarget(this.devStart.place) : null;
+    const devLayer = devPlace && layerFor(devPlace);
+    if (devLayer) worldStore.setState({ sceneId: devLayer.sceneId });
   }
 
   get active(): boolean {
     return this.flight !== null;
+  }
+
+  /** The scene for the layer the ship is in. */
+  get sceneId(): SceneId {
+    return this.inner?.sceneId ?? 'world-galaxy';
   }
 
   /** Starts or stops flying to match `wanted`. */
@@ -120,23 +180,27 @@ export class WorldHost {
   }
 
   private start(): void {
-    const start = this.devStart ?? { pos: SPAWN, orient: quatFromAxisAngle([0, 1, 0], 0) };
+    const dev = this.devStart;
+    const start = dev ?? { pos: SPAWN, orient: quatFromAxisAngle([0, 1, 0], 0) };
     const flight = new FlightModel(start.pos, start.orient, GALAXY_TUNING);
     this.flight = flight;
-    this.chase.reset();
     this.input.setEnabled(true);
-    this.target = null;
     this.jump = null;
     this.message = null;
     this.visiting = new Set();
+    this.lastFrame = null;
     this.sinceSave = 0;
     this.unsaved = { distance: 0, seconds: 0 };
-    this.hood.update(flight.pos);
-    this.nearby = this.hood.nearestSystems(flight.pos, NEARBY_SYSTEMS);
+    this.setLayer(null, null);
+    this.refreshNearby(flight.pos);
     track('world_launch');
-    if (this.devStart) {
-      const id = this.devStart.target;
-      this.target = (id && this.hood.find(id)) || null;
+    if (dev) {
+      const place = dev.place ? placeTarget(dev.place) : null;
+      const layer = place && layerFor(place);
+      if (layer) this.setLayer(layer, null);
+      flight.pos = dev.pos;
+      flight.orient = dev.orient;
+      this.target = (dev.target && this.findTarget(dev.target)) || null;
       return;
     }
     // resume where you were last time
@@ -145,11 +209,28 @@ export class WorldHost {
       .load()
       .then((profile) => {
         const loc = profile.location?.loc;
-        if (this.flight !== flight || !loc || loc.layer !== 'galaxy') return;
-        if (flight.speed > 0 || flight.throttle > 0 || this.jump) return; // already flying off
-        flight.pos = loc.pos;
-        this.chase.reset();
+        if (this.flight !== flight || !loc) return;
+        if (flight.speed > 0 || flight.throttle > 0 || this.jump || this.inner) return; // moved on
+        this.resume(flight, loc);
       });
+  }
+
+  private resume(flight: FlightModel, loc: WorldLocation): void {
+    if (loc.layer === 'galaxy') {
+      flight.pos = loc.pos;
+      this.refreshNearby(flight.pos);
+      this.chase.reset();
+      return;
+    }
+    const id = loc.layer === 'system' ? loc.systemId : loc.landmarkId;
+    const place = placeTarget(id);
+    const layer = place && layerFor(place);
+    if (!place || !layer) return;
+    // already inside: no "discovered" fanfare, it was found last time
+    this.visiting.add(place.id);
+    this.setLayer(layer, `RESUMING AT ${place.name}`);
+    flight.pos = loc.pos;
+    flight.orient = quatLookAt(normalize(scale(loc.pos, -1)), [0, 1, 0]);
   }
 
   private stop(): void {
@@ -157,12 +238,57 @@ export class WorldHost {
     void profileStore.getState().flush();
     this.flight = null;
     this.jump = null;
+    this.inner = null;
     this.input.setEnabled(false);
-    worldStore.setState({ hud: null, requests: [] });
+    worldStore.setState({ hud: null, requests: [], sceneId: 'world-galaxy', warpLabel: null });
     this.hudJson = '';
   }
 
-  /** Writes your position and the distance and time flown since the last save into the profile. */
+  /** Switches the flight to `layer` (null: open space) and asks for its scene, behind a warp. */
+  private setLayer(layer: InnerLayer | null, warpLabel: string | null): void {
+    this.inner = layer;
+    const flight = this.flight;
+    if (flight) {
+      flight.tuning = layer?.tuning ?? GALAXY_TUNING;
+      flight.vel = [0, 0, 0];
+      flight.throttle = 0;
+    }
+    this.chase = new ChaseCamera(layer?.rig ?? GALAXY_RIG);
+    this.dust = new SpaceDust(layer?.dustRadius ?? GALAXY_DUST);
+    this.target = null;
+    worldStore.setState({ sceneId: this.sceneId, warpLabel });
+  }
+
+  /** Goes inside `place`, arriving from where the ship is now. */
+  private enter(flight: FlightModel, place: Target): void {
+    const layer = layerFor(place);
+    if (!layer) return;
+    const off = sub(flight.pos, place.pos);
+    const from = length(off) > 1e-9 ? normalize(off) : scale(flight.forward, -1);
+    if (!this.visiting.has(place.id)) this.visit(place);
+    this.visiting.add(place.id);
+    this.setLayer(layer, `ENTERING ${place.name}`);
+    const spawn = layer.spawn(from);
+    flight.pos = spawn.pos;
+    flight.orient = spawn.orient;
+    track('world_enter', { id: place.id });
+  }
+
+  /** Back out to open space, a little way out from the place, heading on out. */
+  private leave(flight: FlightModel): void {
+    const layer = this.inner;
+    if (!layer) return;
+    const place = layer.place;
+    const out = length(flight.pos) > 1e-9 ? normalize(flight.pos) : scale(flight.forward, -1);
+    this.setLayer(null, 'OPEN SPACE');
+    flight.pos = add(place.pos, scale(out, layer.exitKly));
+    flight.orient = quatLookAt(out, [0, 1, 0]);
+    this.visiting.add(place.id);
+    this.refreshNearby(flight.pos);
+    this.target = this.hood.find(place.id) ?? null;
+  }
+
+  /** Writes where you are and the distance and time flown since the last save into the profile. */
   private save(): void {
     const flight = this.flight;
     if (!flight || this.devStart) return;
@@ -170,9 +296,10 @@ export class WorldHost {
     this.unsaved = { distance: 0, seconds: 0 };
     this.sinceSave = 0;
     const now = new Date().toISOString();
+    const loc = this.location(flight.pos);
     profileStore.getState().update((p) => ({
       ...p,
-      location: { loc: { layer: 'galaxy', pos: flight.pos }, savedAt: now },
+      location: { loc, savedAt: now },
       stats: {
         ...p.stats,
         distanceLy: p.stats.distanceLy + distance * LY,
@@ -181,20 +308,41 @@ export class WorldHost {
     }));
   }
 
-  /** Flies one frame. `frozen` holds everything still (paused, or dev screenshots). */
+  private location(pos: Vec3d): WorldLocation {
+    const layer = this.inner;
+    if (!layer) return { layer: 'galaxy', pos };
+    if (layer.kind === 'system') return { layer: 'system', systemId: layer.place.id, pos };
+    return { layer: 'landmark', landmarkId: layer.place.id, pos };
+  }
+
+  /** Flies one frame. `frozen` holds everything still (paused, warping, or dev screenshots). */
   update(dt: number, frozen: boolean): void {
     const flight = this.flight;
     if (!flight) return;
     const step = frozen ? 0 : dt;
-    this.handleRequests(flight);
-    const moved = this.jump
-      ? this.stepJump(flight, step)
-      : flight.step(step, this.input.controls());
+    if (!frozen) this.handleRequests(flight);
+    const before = flight.pos;
+    if (this.jump) this.stepJump(flight, step);
+    else flight.step(step, this.input.controls());
+    if (this.inner) keepOut(flight, this.inner.occluders());
+    // distance is only counted in open space (each inner layer has its own units)
+    const moved = this.inner ? 0 : distance(before, flight.pos);
     this.dust.update(step, flight.vel);
-    this.hood.update(flight.pos);
-    this.nearby = this.hood.nearestSystems(flight.pos, NEARBY_SYSTEMS);
-    // visits count once you drop out of hyperspace, not as you streak past
-    if (!this.jump) this.checkVisits(flight.pos);
+
+    if (this.inner) {
+      if (this.inner.outside(flight.pos)) this.leave(flight);
+    } else {
+      this.refreshNearby(flight.pos);
+      // visits count once you drop out of hyperspace, not as you streak past
+      if (!this.jump && !frozen) {
+        this.checkVisits(flight.pos);
+        const close = this.candidates().find(
+          (t) => distance(t.pos, flight.pos) < (isSgr(t) ? ENTER_SGR : ENTER),
+        );
+        if (close) this.enter(flight, close);
+      }
+    }
+
     if (this.message && (this.message.left -= step) <= 0) this.message = null;
     this.unsaved.distance += moved;
     this.unsaved.seconds += step;
@@ -210,21 +358,37 @@ export class WorldHost {
     this.publishHud(flight);
   }
 
-  /** Keys and overlay clicks: pick a target, jump. */
+  private refreshNearby(pos: Vec3d): void {
+    this.hood.update(pos);
+    this.nearby = this.hood.nearestSystems(pos, NEARBY_SYSTEMS);
+  }
+
+  /** Keys and overlay clicks: pick a target, jump (or leave). */
   private handleRequests(flight: FlightModel): void {
     for (const key of this.input.takePresses()) {
       if (key === 'KeyT') this.targetAhead(flight);
-      else if (key === 'KeyJ') this.startJump(flight);
+      else if (key === 'KeyJ') this.action(flight);
     }
     for (const r of worldStore.getState().takeRequests()) {
-      if (r.type === 'jump') this.startJump(flight);
-      else if (!this.jump) this.target = this.hood.find(r.id) ?? this.target;
+      if (r.type === 'jump') this.action(flight);
+      else if (!this.jump) this.target = this.findTarget(r.id) ?? this.target;
     }
   }
 
-  /** Every place you could target: nearby systems and the landmarks. */
+  /** J: jump to the target in open space; leave, inside a place. */
+  private action(flight: FlightModel): void {
+    if (this.inner) this.leave(flight);
+    else this.startJump(flight);
+  }
+
+  /** Every place you could target in the layer you're in. */
   private candidates(): Target[] {
+    if (this.inner) return this.inner.targets();
     return [...this.nearby, ...this.hood.landmarks];
+  }
+
+  private findTarget(id: string): Target | undefined {
+    return this.inner ? this.inner.targets().find((t) => t.id === id) : this.hood.find(id);
   }
 
   /** T: the place closest to where the nose points; pressed again, the next closest. */
@@ -243,10 +407,10 @@ export class WorldHost {
 
   private canJump(flight: FlightModel): boolean {
     const t = this.target;
-    return !!t && !this.jump && distance(t.pos, flight.pos) > standOff(t) * 1.5;
+    return !this.inner && !!t && !this.jump && distance(t.pos, flight.pos) > standOff(t) * 1.5;
   }
 
-  /** J: turn to face the target, then jump. */
+  /** J in open space: turn to face the target, then jump. */
   private startJump(flight: FlightModel): void {
     const t = this.target;
     if (this.jump) return;
@@ -269,39 +433,38 @@ export class WorldHost {
     flight.throttle = 0;
   }
 
-  /** Flies one frame of a jump; returns the distance covered. */
-  private stepJump(flight: FlightModel, dt: number): number {
+  /** Flies one frame of a jump. */
+  private stepJump(flight: FlightModel, dt: number): void {
     const jump = this.jump!;
     if (jump.phase === 'align') {
       jump.t += dt;
       const u = Math.min(1, jump.t / ALIGN_S);
       // coast to a stop while turning
-      const moved = flight.step(dt, NO_CONTROLS);
+      flight.step(dt, NO_CONTROLS);
       flight.orient = quatNlerp(jump.from, jump.to, u * u * (3 - 2 * u));
       if (u >= 1) {
         const hop = new HyperJump(flight.pos, jump.target.pos, standOff(jump.target), LY);
         this.jump = { phase: 'travel', hop, target: jump.target };
         this.notify(`JUMPING TO ${jump.target.name}`, hop.duration);
       }
-      return moved;
+      return;
     }
-    const before = flight.pos;
     const { pos, vel } = jump.hop.step(dt);
     flight.pos = pos;
     flight.vel = vel;
-    if (jump.hop.done) {
-      flight.vel = [0, 0, 0];
-      this.jump = null;
-      const ly = distance(jump.hop.from, jump.hop.to) * LY;
-      track('world_jump', { to: jump.target.id, ly: Math.round(ly) });
-      if (!this.devStart) {
-        profileStore
-          .getState()
-          .update((p) => ({ ...p, stats: { ...p.stats, jumps: p.stats.jumps + 1 } }));
-      }
-      this.notify(`ARRIVED: ${jump.target.name}`);
+    if (!jump.hop.done) return;
+    flight.vel = [0, 0, 0];
+    this.jump = null;
+    const ly = distance(jump.hop.from, jump.hop.to) * LY;
+    track('world_jump', { to: jump.target.id, ly: Math.round(ly) });
+    if (!this.devStart) {
+      profileStore
+        .getState()
+        .update((p) => ({ ...p, stats: { ...p.stats, jumps: p.stats.jumps + 1 } }));
     }
-    return distance(before, flight.pos);
+    this.notify(`ARRIVED: ${jump.target.name}`);
+    // straight in: you jumped there to see it
+    this.enter(flight, jump.target);
   }
 
   /** Records first visits (discoveries) and repeat visits to systems and landmarks in range. */
@@ -333,7 +496,7 @@ export class WorldHost {
           discoveries: { ...p.discoveries, systems: { ...p.discoveries.systems, [t.id]: entry } },
         };
       });
-    } else if (!profile.discoveries.landmarks[t.id]) {
+    } else if (t.landmark && !profile.discoveries.landmarks[t.id]) {
       this.notify(`DISCOVERED ${t.name}`);
       track('world_discover', { kind: 'landmark', id: t.id });
       profileStore.getState().update((p) => ({
@@ -347,10 +510,21 @@ export class WorldHost {
     this.message = { text, left: seconds };
   }
 
-  /** What the galaxy layer should draw besides itself: the stars around you. */
-  sceneFrame(): WorldFrame | undefined {
+  /**
+   * What the scene `sceneId` should draw besides itself (the stars, or a system's star and
+   * planets). While a warp is still showing the previous layer's scene, that scene gets the last
+   * frame it had.
+   */
+  sceneFrame(sceneId: string): WorldFrame | undefined {
     if (!this.flight) return undefined;
-    return { stars: nearStars(this.candidates(), this.camPos, STAR_SLOTS, isSgr) };
+    if (sceneId !== this.sceneId) {
+      return this.lastFrame?.sceneId === sceneId ? this.lastFrame.frame : undefined;
+    }
+    const frame = this.inner
+      ? this.inner.sceneFrame(this.camPos)
+      : { stars: nearStars(this.candidates(), this.camPos, STAR_SLOTS, isSgr) };
+    this.lastFrame = { sceneId, frame };
+    return frame;
   }
 
   /** Where the camera should be this frame (after `update`), or null when not flying. */
@@ -363,6 +537,8 @@ export class WorldHost {
     if (!flight) return;
     this.dust.draw(text, view.camera, view.tanHalfFov, flight.pos, flight.vel);
     if (this.target) this.drawTarget(text, view, flight, this.target);
+    // hidden behind a planet (or the star, or the hole)
+    if (this.inner && blocked(this.camPos, flight.pos, this.inner.occluders())) return;
     toV3(flight.pos, this.shipPos);
     toV3(flight.forward, this.shipDir);
     const burning = !!this.jump || flight.boosting || (flight.throttle > 0 && this.frame % 4 < 3);
@@ -377,10 +553,14 @@ export class WorldHost {
     );
   }
 
+  private formatDistance(d: number): string {
+    return this.inner ? this.inner.formatDistance(d) : formatDistance(d);
+  }
+
   /** Brackets round the target with its name and distance, or an arrow at the edge pointing to it. */
   private drawTarget(text: TextLayer, view: GameView, flight: FlightModel, t: Target): void {
     toV3(t.pos, this.targetPos);
-    const label = `${t.name} ${formatDistance(distance(t.pos, flight.pos))}`;
+    const label = `${t.name} ${this.formatDistance(distance(t.pos, flight.pos))}`;
     // keep clear of the edges, and of the hint line and buttons along the bottom
     const margin = 2;
     const bottom = 6;
@@ -392,9 +572,10 @@ export class WorldHost {
       p.row >= margin &&
       p.row < text.rows - bottom
     ) {
+      // in a system, frame the planet itself; in open space stars are points
       drawLabel(
         text,
-        { position: this.targetPos, text: label, radius: 0, style: 'accent' },
+        { position: this.targetPos, text: label, radius: this.targetRadius(t), style: 'accent' },
         view.camera,
         view.tanHalfFov,
       );
@@ -425,29 +606,49 @@ export class WorldHost {
     text.put(nameCol, nameRow, label, 'accent');
   }
 
+  private targetRadius(t: Target): number {
+    const inner = this.inner;
+    if (!(inner instanceof SystemLayer)) return 0;
+    return inner.interior.planets.find((p) => p.id === t.id)?.radius ?? 0;
+  }
+
   private publishHud(flight: FlightModel): void {
-    const speedLy = flight.speed * LY;
-    const [x, y, z] = flight.pos;
-    const rows: Array<[string, string]> = [
-      ['SPEED', speedLy < 0.5 ? '0 LY/S' : `${speedLy.toFixed(speedLy < 10 ? 1 : 0)} LY/S`],
-      ['THROTTLE', `${Math.round(flight.throttle * 100)}%${flight.boosting ? ' BOOST' : ''}`],
-      ['CORE', `${length(flight.pos).toFixed(1)} KLY`],
-      ['PLANE', `${y >= 0 ? '+' : ''}${(y * LY).toFixed(0)} LY`],
-      ['POS', `${x.toFixed(1)}, ${z.toFixed(1)}`],
-    ];
+    const inner = this.inner;
+    const speed = flight.speed;
+    const throttle = `${Math.round(flight.throttle * 100)}%${flight.boosting ? ' BOOST' : ''}`;
+    let rows: Array<[string, string]>;
+    if (inner) {
+      const shown = speed < 0.05 ? '0' : speed.toFixed(speed < 10 ? 1 : 0);
+      rows = [
+        ['SPEED', `${shown} ${inner.speedUnit}`],
+        ['THROTTLE', throttle],
+        ...inner.hudRows(flight.pos),
+      ];
+    } else {
+      const speedLy = speed * LY;
+      const [x, y, z] = flight.pos;
+      rows = [
+        ['SPEED', speedLy < 0.5 ? '0 LY/S' : `${speedLy.toFixed(speedLy < 10 ? 1 : 0)} LY/S`],
+        ['THROTTLE', throttle],
+        ['CORE', `${length(flight.pos).toFixed(1)} KLY`],
+        ['PLANE', `${y >= 0 ? '+' : ''}${(y * LY).toFixed(0)} LY`],
+        ['POS', `${x.toFixed(1)}, ${z.toFixed(1)}`],
+      ];
+    }
     const t = this.target;
     if (t) {
-      rows.push(['TARGET', t.name], ['DIST', formatDistance(distance(t.pos, flight.pos))]);
+      rows.push(['TARGET', t.name], ['DIST', this.formatDistance(distance(t.pos, flight.pos))]);
     }
     if (this.jump?.phase === 'travel') {
       rows.push(['JUMP', `${Math.round(this.jump.hop.progress * 100)}%`]);
     }
     const hud: WorldHud = {
+      title: inner ? inner.place.name : 'OPEN SPACE',
       rows,
-      hint: HINT,
+      hint: inner ? HINT_INSIDE : HINT_GALAXY,
       message: this.message?.text ?? null,
       targets: this.targetRows(flight.pos),
-      canJump: this.canJump(flight),
+      action: inner ? 'LEAVE' : this.canJump(flight) ? 'JUMP' : null,
     };
     const json = JSON.stringify(hud);
     if (json !== this.hudJson) {
@@ -456,15 +657,16 @@ export class WorldHost {
     }
   }
 
-  /** The overlay's list: the nearest systems, then the landmarks, nearest first. */
+  /** The overlay's list: inside, the planets; in open space the nearest systems, then landmarks. */
   private targetRows(pos: Vec3d): WorldTargetRow[] {
     const row = (t: Target): WorldTargetRow => ({
       id: t.id,
       name: t.name,
       kind: t.kind,
-      dist: formatDistance(distance(t.pos, pos)),
+      dist: this.formatDistance(distance(t.pos, pos)),
       selected: t.id === this.target?.id,
     });
+    if (this.inner) return this.inner.targets().map(row);
     const landmarks = [...this.hood.landmarks].sort(
       (a, b) => distance(a.pos, pos) - distance(b.pos, pos),
     );
@@ -477,7 +679,7 @@ export class WorldHost {
   }
 }
 
-function readDevStart(): { pos: Vec3d; orient: Quat; target: string | null } | null {
+function readDevStart(): DevStart | null {
   const q = new URLSearchParams(window.location.search);
   const raw = q.get('wpos');
   if (!raw) return null;
@@ -489,6 +691,7 @@ function readDevStart(): { pos: Vec3d; orient: Quat; target: string | null } | n
   return {
     pos: [nums[0], nums[1], nums[2]],
     orient: quatMul(yaw, pitch),
+    place: q.get('wplace'),
     target: q.get('wtarget'),
   };
 }

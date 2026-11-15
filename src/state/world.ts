@@ -14,6 +14,8 @@ export interface WorldTargetRow {
 
 /** The open world's readout for the React overlay, written by the engine when it changes. */
 export interface WorldHud {
+  /** Where you are: 'OPEN SPACE', or the system's name. */
+  title: string;
   /** Readout rows, e.g. [['SPEED', '20 LY/S']]. */
   rows: Array<[string, string]>;
   /** One line of control hints. */
@@ -22,8 +24,8 @@ export interface WorldHud {
   message: string | null;
   /** Places nearby you can pick as a target. */
   targets: WorldTargetRow[];
-  /** Whether J would jump now (a target is set and you're not already there or jumping). */
-  canJump: boolean;
+  /** What J does right now, as a button label ('JUMP', 'LEAVE'), or null when it can't. */
+  action: string | null;
 }
 
 /** Something the overlay asks the flight to do; the engine takes it on its next frame. */
@@ -32,6 +34,8 @@ export type WorldRequest = { type: 'target'; id: string } | { type: 'jump' };
 export interface WorldState {
   /** The scene rendering the layer the ship is in (the galaxy for now; systems and landmarks later). */
   sceneId: SceneId;
+  /** Caption for the warp into that scene ('ENTERING SOL'); null for the launch's. */
+  warpLabel: string | null;
   hud: WorldHud | null;
   requests: WorldRequest[];
   request(r: WorldRequest): void;
@@ -41,6 +45,7 @@ export interface WorldState {
 
 export const worldStore = createStore<WorldState>()((set, get) => ({
   sceneId: 'world-galaxy',
+  warpLabel: null,
   hud: null,
   requests: [],
   request: (r) => set({ requests: [...get().requests, r] }),

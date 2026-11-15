@@ -18,6 +18,7 @@ import type { SceneInstance, SceneModule } from '@/engine/scene/SceneModule';
 import { Warp } from '@/engine/transition/Warp';
 import { activeBody, activeScene, navigationStore } from '@/state/navigation';
 import { sceneParamsStore } from '@/state/sceneParams';
+import { worldStore } from '@/state/world';
 import { WorldHost } from '@/world/WorldHost';
 
 const FOV_DEG = 50;
@@ -86,6 +87,8 @@ export class Engine {
     });
     this.renderer.autoClear = false;
 
+    // before the first scene is picked: a dev start may put the world's flight somewhere else
+    this.world = new WorldHost(canvas);
     const settings = settingsStore.getState();
     const module = activeScene();
     this.sceneId = module.id;
@@ -98,7 +101,6 @@ export class Engine {
     this.controller.attractEnabled = settings.attractMode;
     this.input = new InputManager(canvas, this.controller);
     this.gameView = { camera: this.camera, tanHalfFov, aspect: 16 / 9 };
-    this.world = new WorldHost(canvas);
     this.games = new GameHost(
       (game) => this.onGameStart(game),
       () => this.onGameStop(),
@@ -245,10 +247,12 @@ export class Engine {
 
   // ---- open world -------------------------------------------------------------------------
 
-  /** Starts or stops flying: wanted while the route is in the world and its scene is on screen. */
+  /**
+   * Starts or stops flying with the route. The flight keeps going through warps (launching, and
+   * moving between its layers); it only moves while its layer's scene is on screen.
+   */
   private syncWorld(): void {
-    const wanted =
-      navigationStore.getState().world && !this.warp && activeScene().id === this.sceneId;
+    const wanted = navigationStore.getState().world;
     if (wanted === this.world.active) return;
     this.world.sync(wanted);
     if (wanted) {
@@ -280,7 +284,7 @@ export class Engine {
     const body = activeBody();
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
     const label = navigationStore.getState().world
-      ? 'LAUNCH > OPEN SPACE'
+      ? (worldStore.getState().warpLabel ?? 'LAUNCH > OPEN SPACE')
       : `WARP > ${body.designation ?? body.name.toUpperCase()}`;
     this.warp = new Warp(label, reduced);
   }
@@ -382,8 +386,11 @@ export class Engine {
     const grid = this.display.currentGrid;
     this.gameView.aspect = grid ? grid.cols / grid.rows : this.drawSize.x / this.drawSize.y;
     if (this.world.active) {
-      this.world.update(dt, s.paused || this.frozenTime !== null);
-      this.applyWorldCamera();
+      // frozen while warping; until the flight's scene is on screen (the first half of a warp),
+      // the camera holds still too
+      const onScreen = this.world.sceneId === this.sceneId;
+      this.world.update(dt, s.paused || this.frozenTime !== null || this.warp !== null);
+      if (onScreen) this.applyWorldCamera();
     } else if (this.games.active) {
       this.games.update(dt, this.gameView);
       this.applyGameCamera();
@@ -402,7 +409,7 @@ export class Engine {
       dt,
       steps,
       frozenTime: this.frozenTime,
-      world: this.world.sceneFrame(),
+      world: this.world.sceneFrame(this.sceneId),
     });
     this.drawLabels(s);
     this.display.render(this.renderer, s, timeMs);
