@@ -62,6 +62,24 @@ export interface SceneFrame<P = Record<string, ParamValue>> {
   steps: number;
   /** Dev only: hold the scene's animation clock at this value, for reproducible screenshots. */
   frozenTime: number | null;
+  /** In the open world: what the flight wants drawn besides the scene itself (nearby stars). */
+  world?: WorldFrame;
+}
+
+/** A star near the ship, for an open-world layer to draw. */
+export interface NearStar {
+  /** Position relative to the camera, in the scene's units (small, so float32 keeps it exact). */
+  rel: readonly [number, number, number];
+  /** How bright it looks (scene brightness units). */
+  brightness: number;
+  /** Index into the scene's materials. */
+  material: number;
+  /** Size of its core, in sky pixels. */
+  size: number;
+}
+
+export interface WorldFrame {
+  stars: readonly NearStar[];
 }
 
 export interface SceneInstance<P = Record<string, ParamValue>> {

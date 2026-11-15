@@ -1,0 +1,13 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`procedural sectors > snapshot: the sectors next to the Sun (changing this needs a new GEN) 1`] = `
+[
+  "g1:-1.0.540:0 YSTE III G 1",
+  "g1:0.0.540:0 RELSIANUTH O 3",
+  "g1:0.0.540:1 KAEON M 5",
+  "g1:0.0.540:2 NORVIAL G 1",
+  "g1:1.0.540:0 KEX III K 6",
+  "g1:1.0.540:1 RESARIA IV B 2",
+  "g1:1.0.540:2 DARYKELX II G 5",
+]
+`;

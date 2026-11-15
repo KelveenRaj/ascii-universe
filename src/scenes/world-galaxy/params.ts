@@ -33,6 +33,16 @@ export const WORLD_GALAXY_PARAMS = {
   },
   /** Lighter than the overview's: from inside, real dust hides most of the galaxy (the core too). */
   dust: { kind: 'number', label: 'DUST', default: 0.35, min: 0, max: 2, step: 0.05, digits: 2 },
+  /** Brightness of the nearby star systems you can fly to. */
+  nearStars: {
+    kind: 'number',
+    label: 'NEAR STARS',
+    default: 1,
+    min: 0,
+    max: 3,
+    step: 0.05,
+    digits: 2,
+  },
   starDensity: {
     kind: 'number',
     label: 'STARS',

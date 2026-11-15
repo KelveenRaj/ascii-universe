@@ -6,10 +6,12 @@ import commonStyles from '@/ui/common.module.css';
 import { PixelButton } from '@/ui/controls';
 import { cx } from '@/ui/cx';
 import styles from '@/ui/GameOverlay.module.css';
+import own from '@/ui/WorldOverlay.module.css';
 
 /**
  * The open world's screen furniture while you fly: the flight readout top-left (in place of the
- * HUD), control hints, and a button to land. Same look as a minigame's overlay.
+ * HUD), places to target top-right, notices (discoveries, jumps), control hints, and buttons to
+ * jump and land. Same look as a minigame's overlay.
  */
 export function WorldOverlay() {
   const world = useStore(navigationStore, (s) => s.world);
@@ -17,6 +19,11 @@ export function WorldOverlay() {
   const asciiOn = useStore(settingsStore, (s) => s.ascii && s.debugView === 'final');
   if (!world) return null;
   const land = () => navigationStore.getState().setWorld(false);
+  const jump = () => worldStore.getState().request({ type: 'jump' });
+  const pick = (id: string) => worldStore.getState().request({ type: 'target', id });
+  const targets = hud?.targets ?? [];
+  // the list is nearby systems first, then landmarks (which have no ':' in their ids)
+  const firstLandmark = targets.findIndex((t) => !t.id.includes(':'));
 
   return (
     <>
@@ -36,6 +43,44 @@ export function WorldOverlay() {
         </dl>
       </aside>
 
+      {targets.length > 0 && (
+        <nav
+          className={cx(commonStyles.frame, own.targets)}
+          aria-label="Targets"
+          data-testid="target-list"
+          data-ui
+        >
+          <div className={styles.title}>TARGETS</div>
+          <ul className={own.list}>
+            {targets.map((t, i) => (
+              <li key={t.id}>
+                {i === firstLandmark && i > 0 && <div className={own.divider} />}
+                <button
+                  type="button"
+                  className={cx(own.target, t.selected && own.selected)}
+                  onClick={() => pick(t.id)}
+                  title={t.kind}
+                  aria-pressed={t.selected}
+                >
+                  <span>{t.name}</span>
+                  <span className={own.dist}>{t.dist}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
+
+      {hud?.message && (
+        <div
+          className={cx(commonStyles.frame, styles.message, own.toast)}
+          role="status"
+          data-testid="world-message"
+        >
+          <p>{hud.message}</p>
+        </div>
+      )}
+
       {!asciiOn && (
         <div className={cx(commonStyles.frame, styles.message)} role="status">
           <p>Your ship is drawn in ASCII. Turn it back on (G) to see it.</p>
@@ -47,6 +92,11 @@ export function WorldOverlay() {
           {hud?.hint}
         </div>
         <div className={styles.pads}>
+          {hud?.canJump && (
+            <PixelButton onClick={jump} title="Jump to the target (J)">
+              JUMP
+            </PixelButton>
+          )}
           <PixelButton onClick={land} title="Land (Esc)">
             LAND
           </PixelButton>

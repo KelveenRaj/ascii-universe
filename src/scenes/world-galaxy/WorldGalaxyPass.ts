@@ -8,6 +8,9 @@ import worldGalaxyFrag from '@/scenes/world-galaxy/shaders/world-galaxy.frag';
 
 type U<T> = THREE.IUniform<T>;
 
+/** Must match NEAR_MAX in world-galaxy.frag. */
+export const NEAR_MAX = 48;
+
 /**
  * Ray-marches the galaxy around the ship (see shaders/world-galaxy.frag). The camera is placed by
  * the open world's flight (WorldHost), in kly; the galaxy itself holds still.
@@ -31,6 +34,10 @@ export class WorldGalaxyPass implements SceneInstance<WorldGalaxyParams> {
     uBarHalfLength: U<number>;
     uBarAngle: U<number>;
     uPitch: U<number>;
+    uNear: U<THREE.Vector4[]>;
+    uNearInfo: U<THREE.Vector2[]>;
+    uNearCount: U<number>;
+    uStarGain: U<number>;
   }>;
 
   constructor(tanHalfFov: number) {
@@ -52,6 +59,10 @@ export class WorldGalaxyPass implements SceneInstance<WorldGalaxyParams> {
       uBarHalfLength: { value: GALAXY.barHalfLength },
       uBarAngle: { value: GALAXY.barAngle },
       uPitch: { value: GALAXY.pitch },
+      uNear: { value: Array.from({ length: NEAR_MAX }, () => new THREE.Vector4()) },
+      uNearInfo: { value: Array.from({ length: NEAR_MAX }, () => new THREE.Vector2()) },
+      uNearCount: { value: 0 },
+      uStarGain: { value: 1 },
     });
   }
 
@@ -62,7 +73,7 @@ export class WorldGalaxyPass implements SceneInstance<WorldGalaxyParams> {
   }
 
   render(frame: SceneFrame<WorldGalaxyParams>): void {
-    const { renderer, target, camera, settings, params: p, steps } = frame;
+    const { renderer, target, camera, settings, params: p, steps, world } = frame;
     const u = this.pass.uniforms;
     u.uCamPos.value.copy(camera.position);
     u.uCamBasis.value.setFromMatrix4(camera.matrixWorld);
@@ -73,6 +84,15 @@ export class WorldGalaxyPass implements SceneInstance<WorldGalaxyParams> {
     u.uGlow.value = p.glow;
     u.uContrast.value = p.contrast;
     u.uRedshiftView.value = settings.debugView === 'redshift';
+    u.uStarGain.value = p.nearStars;
+    const stars = world?.stars ?? [];
+    const n = Math.min(NEAR_MAX, stars.length);
+    for (let i = 0; i < n; i++) {
+      const s = stars[i];
+      u.uNear.value[i].set(s.rel[0], s.rel[1], s.rel[2], s.brightness);
+      u.uNearInfo.value[i].set(s.material, s.size);
+    }
+    u.uNearCount.value = n;
     this.pass.render(renderer, target);
   }
 

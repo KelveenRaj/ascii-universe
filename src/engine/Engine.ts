@@ -402,6 +402,7 @@ export class Engine {
       dt,
       steps,
       frozenTime: this.frozenTime,
+      world: this.world.sceneFrame(),
     });
     this.drawLabels(s);
     this.display.render(this.renderer, s, timeMs);
