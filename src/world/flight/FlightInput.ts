@@ -20,16 +20,20 @@ const KEYS = new Set([
   'ShiftRight',
 ]);
 
+/** One-shot keys: each press is reported once by takePresses(). */
+const PRESS_KEYS = new Set(['KeyT', 'KeyJ']);
+
 const clamp = (v: number) => Math.max(-1, Math.min(1, v));
 
 /**
  * Keyboard and mouse → flight controls. Keys: W / S throttle, arrows pitch and turn, A / D turn,
- * Q / E roll, Shift boost, X stop. Dragging on the screen steers like a stick: the further from
+ * Q / E roll, Shift boost, X stop, T target, J jump. Dragging on the screen steers like a stick: the further from
  * where you pressed, the harder the turn. Touch controls come later (on-screen stick).
  * Only listens while enabled.
  */
 export class FlightInput {
   private readonly held = new Set<string>();
+  private presses: string[] = [];
   private readonly canvas: HTMLElement;
   private enabled = false;
   private drag: { id: number; x: number; y: number; dx: number; dy: number } | null = null;
@@ -48,7 +52,15 @@ export class FlightInput {
   setEnabled(on: boolean): void {
     this.enabled = on;
     this.held.clear();
+    this.presses = [];
     this.drag = null;
+  }
+
+  /** One-shot keys pressed since the last call ('KeyT' target, 'KeyJ' jump), oldest first. */
+  takePresses(): string[] {
+    const out = this.presses;
+    this.presses = [];
+    return out;
   }
 
   controls(): FlightControls {
@@ -67,6 +79,11 @@ export class FlightInput {
 
   private onKeyDown = (e: KeyboardEvent) => {
     if (!this.enabled || e.ctrlKey || e.metaKey || e.altKey || isTypingTarget(e.target)) return;
+    if (PRESS_KEYS.has(e.code)) {
+      e.preventDefault();
+      if (!e.repeat) this.presses.push(e.code);
+      return;
+    }
     if (!KEYS.has(e.code)) return;
     e.preventDefault();
     this.held.add(e.code);

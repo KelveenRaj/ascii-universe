@@ -25,6 +25,14 @@ uniform float uGlow;        // overall gain: a path through the disk collects fa
 uniform float uContrast;    // > 1 darkens the faint haze every direction picks up from inside the disk
 uniform bool uRedshiftView;
 
+// Stars near the ship (procedural systems and landmarks), camera-relative so float32 keeps them
+// exact: xyz = position (kly), w = brightness; info x = material, y = core size in sky pixels.
+const int NEAR_MAX = 48;
+uniform vec4 uNear[NEAR_MAX];
+uniform vec2 uNearInfo[NEAR_MAX];
+uniform int uNearCount;
+uniform float uStarGain;
+
 // layout (kly, radians); keep in sync with src/scenes/milky-way/layout.ts
 uniform float uDiskRadius;
 uniform float uBarHalfLength;
@@ -112,6 +120,28 @@ void main() {
   float material = 0.0;
   if (light.z > 0.45 * max(light.x, light.y)) material = 2.0;
   else if (light.y > light.x) material = 1.0;
+
+  // nearby stars: a sharp core at least a sky pixel wide, plus a soft halo; the brightest one
+  // under this pixel picks the material once it outshines the galaxy behind it
+  float starLight = 0.0;
+  float strongest = 0.0;
+  float starMaterial = 0.0;
+  for (int i = 0; i < NEAR_MAX; i++) {
+    if (i >= uNearCount) break;
+    vec3 s = uNear[i].xyz;
+    float c = dot(rd, normalize(s));
+    if (c <= 0.0) continue;
+    float ang = sqrt(max(0.0, 2.0 * (1.0 - c))); // small-angle distance from the ray
+    float r = uPixelAngle * uNearInfo[i].y;
+    float v = uNear[i].w * uStarGain * (exp(-(ang * ang) / (r * r)) + 0.15 * exp(-ang / (3.0 * r)));
+    starLight += v;
+    if (v > strongest) {
+      strongest = v;
+      starMaterial = uNearInfo[i].x;
+    }
+  }
+  if (strongest > 0.02 && strongest > 0.5 * brightness) material = starMaterial;
+  brightness += starLight;
 
   float sky = stars(rd, uStarDensity, uPixelAngle) * transmittance * exp(-brightness * 2.0);
 

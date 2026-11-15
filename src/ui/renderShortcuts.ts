@@ -44,6 +44,8 @@ export function onRenderShortcut(e: KeyboardEvent): void {
       s.set('labels', !s.labels);
       break;
     case 't':
+      // in the open world, T picks a target
+      if (navigationStore.getState().world) break;
       s.set('crt', !s.crt);
       break;
     case 'c':

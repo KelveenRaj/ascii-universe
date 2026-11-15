@@ -253,4 +253,34 @@ test.describe('open world', () => {
       )
       .toBe('galaxy');
   });
+
+  test('pick a target from the list, jump to it, and it goes in your discoveries', async ({
+    page,
+  }) => {
+    await openWith(page, settings, '/#/world');
+    const flight = page.getByTestId('flight-panel');
+    await expect(flight).toContainText('CORE', { timeout: 30_000 });
+    await page.getByTestId('target-list').getByRole('button', { name: /^VEGA/ }).click();
+    await expect(flight).toContainText('VEGA');
+
+    await page.getByRole('button', { name: 'JUMP' }).click();
+    await expect(page.getByTestId('world-message')).toContainText('JUMPING TO VEGA');
+    // a ~25 ly hop: under a second to turn, ~3 s in hyperspace, then you're there
+    await expect(page.getByTestId('world-message')).toContainText(/(ARRIVED: |DISCOVERED )VEGA/, {
+      timeout: 20_000,
+    });
+    await expect(page.getByRole('button', { name: 'JUMP' })).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'LAND' }).click();
+    await expect
+      .poll(
+        async () => {
+          const saved = await page.evaluate(() => localStorage.getItem('ascii-universe:pilot'));
+          const p = JSON.parse(saved ?? '{}');
+          return [p.stats?.jumps, typeof p.discoveries?.landmarks?.vega];
+        },
+        { timeout: 15_000 },
+      )
+      .toEqual([1, 'string']);
+  });
 });

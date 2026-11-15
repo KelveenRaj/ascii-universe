@@ -71,3 +71,46 @@ export const isFiniteVec = (v: unknown): v is Vec3d =>
 
 export const isFiniteQuat = (q: unknown): q is Quat =>
   Array.isArray(q) && q.length === 4 && q.every((n) => typeof n === 'number' && Number.isFinite(n));
+
+/**
+ * The rotation that points the local −Z axis along `forward` with local +Y as close to `up` as it
+ * can be (a camera-style look rotation). `forward` must be non-zero and not parallel to `up`.
+ */
+export function quatLookAt(forward: Vec3d, up: Vec3d): Quat {
+  const z = normalize(scale(forward, -1)); // local +Z points backwards
+  let x = cross(up, z);
+  if (length(x) < 1e-9) x = cross([1, 0, 0], z); // looking straight up or down
+  x = normalize(x);
+  const y = cross(z, x);
+  // rotation matrix with columns x, y, z → quaternion
+  const [m00, m10, m20] = x;
+  const [m01, m11, m21] = y;
+  const [m02, m12, m22] = z;
+  const trace = m00 + m11 + m22;
+  let q: Quat;
+  if (trace > 0) {
+    const s = 0.5 / Math.sqrt(trace + 1);
+    q = [(m21 - m12) * s, (m02 - m20) * s, (m10 - m01) * s, 0.25 / s];
+  } else if (m00 > m11 && m00 > m22) {
+    const s = 2 * Math.sqrt(1 + m00 - m11 - m22);
+    q = [0.25 * s, (m01 + m10) / s, (m02 + m20) / s, (m21 - m12) / s];
+  } else if (m11 > m22) {
+    const s = 2 * Math.sqrt(1 + m11 - m00 - m22);
+    q = [(m01 + m10) / s, 0.25 * s, (m12 + m21) / s, (m02 - m20) / s];
+  } else {
+    const s = 2 * Math.sqrt(1 + m22 - m00 - m11);
+    q = [(m02 + m20) / s, (m12 + m21) / s, 0.25 * s, (m10 - m01) / s];
+  }
+  return quatNormalize(q);
+}
+
+/** Part way (t = 0…1) from rotation a to b, the short way round (normalised lerp: fine for easing). */
+export function quatNlerp(a: Quat, b: Quat, t: number): Quat {
+  const sign = a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3] < 0 ? -1 : 1;
+  return quatNormalize([
+    a[0] + (sign * b[0] - a[0]) * t,
+    a[1] + (sign * b[1] - a[1]) * t,
+    a[2] + (sign * b[2] - a[2]) * t,
+    a[3] + (sign * b[3] - a[3]) * t,
+  ]);
+}
