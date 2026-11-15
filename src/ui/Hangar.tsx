@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { useStore } from 'zustand';
 import { TEXT_SWATCHES } from '@/engine/display/TextLayer';
+import { track } from '@/profile/EventSink';
 import { profileStore } from '@/state/profile';
 import { worldStore } from '@/state/world';
 import { PixelButton, Section } from '@/ui/controls';
@@ -151,7 +152,15 @@ export function Hangar() {
     if (!open) return;
     void profileStore.getState().load();
     // however the hangar closes (DONE, Esc, leaving the world), the design is saved right away
-    const save = () => void profileStore.getState().flush();
+    track('hangar_open');
+    const save = () => {
+      void profileStore.getState().flush();
+      const ship = profileStore.getState().profile?.ship;
+      if (ship) {
+        const { hull, wings, engine, color } = ship;
+        track('ship_saved', { hull, wings, engine, color });
+      }
+    };
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
     if (reduced) return save;
     const id = setInterval(() => setFrame((f) => f + 1), SPIN_MS);

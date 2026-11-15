@@ -1,5 +1,6 @@
 import { isTypingTarget } from '@/engine/camera/InputManager';
 import type { FlightControls } from '@/world/flight/FlightModel';
+import { flightPad } from '@/world/flight/pad';
 
 /** Drag this far (CSS px) from where you pressed for a full-rate turn. */
 const DRAG_FULL_PX = 90;
@@ -28,7 +29,8 @@ const clamp = (v: number) => Math.max(-1, Math.min(1, v));
 /**
  * Keyboard and mouse → flight controls. Keys: W / S throttle, arrows pitch and turn, A / D turn,
  * Q / E roll, Shift boost, X stop, T target, J jump. Dragging on the screen steers like a stick: the further from
- * where you pressed, the harder the turn. Touch controls come later (on-screen stick).
+ * where you pressed, the harder the turn (on touch too). On-screen buttons for the rest come in
+ * through flightPad.
  * Only listens while enabled.
  */
 export class FlightInput {
@@ -54,17 +56,19 @@ export class FlightInput {
     this.held.clear();
     this.presses = [];
     this.drag = null;
+    flightPad.clear();
   }
 
   /** One-shot keys pressed since the last call ('KeyT' target, 'KeyJ' jump), oldest first. */
   takePresses(): string[] {
-    const out = this.presses;
+    const out = [...this.presses, ...flightPad.takePresses()];
     this.presses = [];
-    return out;
+    return this.enabled ? out : [];
   }
 
   controls(): FlightControls {
-    const k = (code: string) => (this.held.has(code) ? 1 : 0);
+    const down = (code: string) => this.enabled && (this.held.has(code) || flightPad.isHeld(code));
+    const k = (code: string) => (down(code) ? 1 : 0);
     const stickX = this.drag ? clamp(this.drag.dx / DRAG_FULL_PX) : 0;
     const stickY = this.drag ? clamp(this.drag.dy / DRAG_FULL_PX) : 0;
     return {
@@ -72,8 +76,8 @@ export class FlightInput {
       yaw: clamp(k('ArrowLeft') + k('KeyA') - k('ArrowRight') - k('KeyD') - stickX),
       roll: clamp(k('KeyE') - k('KeyQ')),
       throttle: k('KeyW') - k('KeyS'),
-      stop: this.held.has('KeyX'),
-      boost: this.held.has('ShiftLeft') || this.held.has('ShiftRight'),
+      stop: down('KeyX'),
+      boost: down('ShiftLeft') || down('ShiftRight'),
     };
   }
 

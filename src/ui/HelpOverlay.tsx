@@ -1,12 +1,32 @@
 import { useStore } from 'zustand';
 import type { SceneModule } from '@/engine/scene/SceneModule';
+import { navigationStore } from '@/state/navigation';
 import { uiStore } from '@/state/ui';
 import { Section } from '@/ui/controls';
 import { Dialog } from '@/ui/Dialog';
+import { FLIGHT_GROUPS, type Group } from '@/ui/flightControls';
 import styles from '@/ui/HelpOverlay.module.css';
 import { useActiveScene } from '@/ui/useActiveScene';
 
-type Group = { title: string; rows: Array<[string, string]> };
+/** Rows of key → what it does, in titled sections. */
+export function ControlGroups(props: { groups: Group[] }) {
+  return (
+    <div className={styles.groups}>
+      {props.groups.map((g) => (
+        <Section key={g.title} title={g.title}>
+          <dl className={styles.list}>
+            {g.rows.map(([k, v]) => (
+              <div key={k} className={styles.row}>
+                <dt>{k}</dt>
+                <dd>{v}</dd>
+              </div>
+            ))}
+          </dl>
+        </Section>
+      ))}
+    </div>
+  );
+}
 
 /** Help rows; the preset keys (1, 2, 3…) come from the active scene's camera presets. */
 const groups = (presets: SceneModule['camera']['presets']): Group[] => [
@@ -56,6 +76,7 @@ const groups = (presets: SceneModule['camera']['presets']): Group[] => [
 export function HelpOverlay() {
   const open = useStore(uiStore, (s) => s.helpOpen);
   const scene = useActiveScene();
+  const world = useStore(navigationStore, (s) => s.world);
   if (!open) return null;
 
   return (
@@ -64,20 +85,7 @@ export function HelpOverlay() {
       onClose={() => uiStore.getState().setHelpOpen(false)}
       className={styles.help}
     >
-      <div className={styles.groups}>
-        {groups(scene.camera.presets).map((g) => (
-          <Section key={g.title} title={g.title}>
-            <dl className={styles.list}>
-              {g.rows.map(([k, v]) => (
-                <div key={k} className={styles.row}>
-                  <dt>{k}</dt>
-                  <dd>{v}</dd>
-                </div>
-              ))}
-            </dl>
-          </Section>
-        ))}
-      </div>
+      <ControlGroups groups={world ? FLIGHT_GROUPS : groups(scene.camera.presets)} />
     </Dialog>
   );
 }

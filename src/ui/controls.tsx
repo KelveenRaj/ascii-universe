@@ -125,16 +125,18 @@ export function Select<T extends string>(props: {
 
 export function PixelButton(props: {
   children: ReactNode;
-  onClick: () => void;
+  onClick?: () => void;
+  /** 'submit' sends its form. */
+  type?: 'button' | 'submit';
   title?: string;
   /** Full width of its container. */
   wide?: boolean;
   'aria-expanded'?: boolean;
   'aria-controls'?: string;
 }) {
-  const { children, wide, ...rest } = props;
+  const { children, wide, type = 'button', ...rest } = props;
   return (
-    <button type="button" className={cx(styles.button, wide && styles.wide)} {...rest}>
+    <button type={type} className={cx(styles.button, wide && styles.wide)} {...rest}>
       {children}
     </button>
   );

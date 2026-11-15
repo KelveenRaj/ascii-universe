@@ -7,11 +7,37 @@ import { PixelButton } from '@/ui/controls';
 import { cx } from '@/ui/cx';
 import styles from '@/ui/GameOverlay.module.css';
 import own from '@/ui/WorldOverlay.module.css';
+import { flightPad } from '@/world/flight/pad';
+
+/** A touch button that holds a flight key down while pressed. */
+function HoldButton(props: { code: string; label: string; title: string }) {
+  const release = () => flightPad.hold(props.code, false);
+  return (
+    <button
+      type="button"
+      className={styles.pad}
+      title={props.title}
+      aria-label={props.title}
+      onPointerDown={(e) => {
+        e.preventDefault();
+        e.currentTarget.setPointerCapture?.(e.pointerId);
+        flightPad.hold(props.code, true);
+      }}
+      onPointerUp={release}
+      onPointerCancel={release}
+      onLostPointerCapture={release}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      {props.label}
+    </button>
+  );
+}
 
 /**
  * The open world's screen furniture while you fly: the flight readout top-left (in place of the
  * HUD), places to target top-right, notices (discoveries, jumps), control hints, and buttons to
- * jump and land. Same look as a minigame's overlay.
+ * jump and land, and on touch screens the throttle, boost, stop and target buttons (steering is
+ * dragging on the screen). Same look as a minigame's overlay.
  */
 export function WorldOverlay() {
   const world = useStore(navigationStore, (s) => s.world);
@@ -87,9 +113,24 @@ export function WorldOverlay() {
         </div>
       )}
 
-      <div className={styles.controls} data-ui>
+      <div className={cx(styles.controls, own.controls)} data-ui>
         <div className={styles.hint} aria-hidden="true">
           {hud?.hint}
+        </div>
+        <div className={cx(styles.pads, own.touchPads)} data-testid="touch-pads">
+          <HoldButton code="KeyS" label="THR-" title="Throttle down (S)" />
+          <HoldButton code="KeyW" label="THR+" title="Throttle up (W)" />
+          <HoldButton code="ShiftLeft" label="BST" title="Boost (Shift)" />
+          <HoldButton code="KeyX" label="STOP" title="Stop (X)" />
+          <button
+            type="button"
+            className={styles.pad}
+            title="Target what you face (T)"
+            aria-label="Target what you face (T)"
+            onClick={() => flightPad.press('KeyT')}
+          >
+            TGT
+          </button>
         </div>
         <div className={styles.pads}>
           {hud?.action && (

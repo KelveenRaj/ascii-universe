@@ -67,13 +67,35 @@
   top: 64px;
 }
 
+/* throttle / boost / stop / target, only where there's no keyboard to speak of */
+.touchPads {
+  display: none;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .touchPads {
+    display: flex;
+  }
+}
+
+.controls {
+  flex-wrap: wrap;
+}
+
 @media (max-width: 640px) {
+  /* beside the flight panel, keeping the middle clear for the ship */
   .targets {
-    top: auto;
-    bottom: 72px;
+    top: 64px;
     right: 12px;
     width: 180px;
-    max-height: 40vh;
+    max-height: 34vh;
+    padding: 8px 6px;
+  }
+
+  .target {
+    gap: 4px;
   }
 
   .toast {

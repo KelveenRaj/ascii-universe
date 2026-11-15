@@ -17,6 +17,7 @@ import { TextExport } from '@/ui/TextExport';
 import { useGlobalKeys } from '@/ui/useGlobalKeys';
 import { WorldOverlay } from '@/ui/WorldOverlay';
 import { Hangar } from '@/ui/Hangar';
+import { Onboarding } from '@/ui/Onboarding';
 import { usePaletteTheme } from '@/ui/usePaletteTheme';
 
 export default function App() {
@@ -40,6 +41,7 @@ export default function App() {
       <GameOverlay />
       <WorldOverlay />
       <Hangar />
+      <Onboarding />
       {!game && !world && <Navigator />}
       <TopBar />
       <SettingsPanel />
