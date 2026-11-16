@@ -1,0 +1,216 @@
+/* Exploration mode: a slim readout and the buttons along the bottom, the toast up top. */
+
+.dock {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.readout {
+  min-width: 180px;
+  padding: 10px 12px;
+  font-size: 8px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.title {
+  margin-bottom: 10px;
+  color: var(--ink-bright);
+  letter-spacing: 1px;
+}
+
+.grid {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.row dt {
+  color: var(--accent);
+}
+
+.row dd {
+  margin: 0;
+  color: var(--ink-bright);
+}
+
+.bar {
+  letter-spacing: -1px;
+}
+
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.target {
+  padding-top: 7px;
+  border-top: 1px solid var(--ink-dim);
+}
+
+.right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.hint {
+  max-width: 46ch;
+  font-size: 8px;
+  line-height: 1.6;
+  text-align: right;
+  color: var(--ink-dim);
+  filter: brightness(1.6);
+}
+
+.pads {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.pad {
+  min-width: 44px;
+  min-height: 44px;
+  font: inherit;
+  font-size: 8px;
+  color: var(--ink);
+  background: rgba(0, 0, 0, 0.78);
+  border: 2px solid var(--ink);
+  box-shadow: 4px 4px 0 var(--ink-dim);
+  text-shadow: 0 0 6px var(--glow);
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+
+.pad:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 var(--ink-dim);
+  color: #000;
+  background: var(--ink);
+}
+
+/* throttle / boost / stop / target, only where there's no keyboard to speak of */
+.touchPads {
+  display: none;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .touchPads {
+    display: flex;
+  }
+
+  .hint {
+    display: none;
+  }
+}
+
+/* ---- notices -------------------------------------------------------------------------------- */
+
+.toast {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(420px, calc(100vw - 32px - 2 * 250px));
+  min-width: 240px;
+  padding: 10px 14px;
+  font-size: 8px;
+  line-height: 1.7;
+  text-align: center;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.toast p {
+  margin: 0;
+}
+
+/* ---- phones, portrait ------------------------------------------------------------------------ */
+
+@media (max-width: 640px) {
+  .dock {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .readout {
+    align-self: flex-start;
+    min-width: 0;
+    padding: 8px 10px;
+  }
+
+  .extra {
+    display: none;
+  }
+
+  .right {
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .pads {
+    justify-content: center;
+  }
+
+  .toast {
+    /* between the card peek and the top bar would be cramped: drop it low in the middle */
+    top: auto;
+    bottom: 200px;
+    width: calc(100vw - 24px);
+  }
+}
+
+/* ---- phones, landscape ---------------------------------------------------------------------- */
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .dock {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+  }
+
+  .readout {
+    min-width: 0;
+    padding: 6px 8px;
+  }
+
+  .title {
+    margin-bottom: 6px;
+  }
+
+  .extra,
+  .hint {
+    display: none;
+  }
+
+  .toast {
+    top: 8px;
+    width: min(360px, 40vw);
+  }
+}

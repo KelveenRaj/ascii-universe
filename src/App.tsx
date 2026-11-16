@@ -6,43 +6,42 @@ import { navigationStore, startHashSync } from '@/state/navigation';
 import { startProfileAutosave } from '@/state/profile';
 import { settingsStore } from '@/state/settings';
 import { BootScreen } from '@/ui/BootScreen';
-import { GameOverlay } from '@/ui/GameOverlay';
+import { FlightHud } from '@/ui/FlightHud';
+import { Hangar } from '@/ui/Hangar';
 import { HelpOverlay } from '@/ui/HelpOverlay';
-import { Hud, KeyHint, TopBar } from '@/ui/Hud';
+import { KeyHint, StatusLine, TopBar } from '@/ui/Hud';
 import { InfoPanel } from '@/ui/InfoPanel';
-import { Navigator } from '@/ui/Navigator';
+import { Minimap } from '@/ui/Minimap';
+import { Onboarding } from '@/ui/Onboarding';
 import { SettingsPanel } from '@/ui/SettingsPanel';
 import { SignalLost } from '@/ui/SignalLost';
 import { TextExport } from '@/ui/TextExport';
 import { useGlobalKeys } from '@/ui/useGlobalKeys';
-import { WorldOverlay } from '@/ui/WorldOverlay';
-import { Hangar } from '@/ui/Hangar';
-import { Onboarding } from '@/ui/Onboarding';
 import { usePaletteTheme } from '@/ui/usePaletteTheme';
 
+/**
+ * Two modes share one screen: infographics (warp between the Milky Way, Sgr A* and the Solar
+ * System, read about what you see) and exploration (fly your own ship; contact with a real body
+ * brings up its card). The map top right and the card top left serve both.
+ */
 export default function App() {
   usePaletteTheme();
   useGlobalKeys();
   useEffect(() => startHashSync(), []);
   useEffect(() => startProfileAutosave(), []);
-  // the info card and a game's readout take the HUD's corner
   const hud = useStore(settingsStore, (s) => s.hud);
-  const info = useStore(navigationStore, (s) => s.info);
-  const game = useStore(navigationStore, (s) => s.game);
   const world = useStore(navigationStore, (s) => s.world);
-  const explore = !info && !game && !world;
 
   return (
     <main className={styles.app}>
       <EngineCanvas />
-      {hud && explore && <Hud />}
-      {hud && explore && <KeyHint />}
+      {hud && !world && <StatusLine />}
+      {!world && <KeyHint />}
       <InfoPanel />
-      <GameOverlay />
-      <WorldOverlay />
+      <FlightHud />
       <Hangar />
       <Onboarding />
-      {!game && !world && <Navigator />}
+      <Minimap />
       <TopBar />
       <SettingsPanel />
       <HelpOverlay />

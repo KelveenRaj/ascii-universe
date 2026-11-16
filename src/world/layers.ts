@@ -6,7 +6,6 @@ import { layoutAt } from '@/scenes/solar-system/layout';
 import { SOLAR_SYSTEM_PARAMS } from '@/scenes/solar-system/params';
 import type { ChaseRig } from '@/world/flight/ChaseCamera';
 import type { FlightModel, FlightTuning } from '@/world/flight/FlightModel';
-import { SYSTEM_MATERIAL, type PlanetKind, type SystemInterior } from '@/world/gen/planets';
 import {
   distance,
   dot,
@@ -32,7 +31,7 @@ export interface Sphere {
  * scene of its own (Sgr A*). Each has its own units; the galaxy layer is WorldHost's default.
  */
 export interface InnerLayer {
-  readonly kind: 'system' | 'landmark';
+  readonly kind: 'landmark';
   readonly sceneId: SceneId;
   /** The place in open space this layer is the inside of. */
   readonly place: Target;
@@ -66,6 +65,14 @@ export interface InnerLayer {
   outside(pos: Vec3d): boolean;
   formatDistance(d: number): string;
   hudRows(pos: Vec3d): Array<[string, string]>;
+  /** Catalog id of the real body the ship is in contact with right now. */
+  contact(): string;
+  /** The minimap's scope for this layer, with the bodies to plot (layer units, x and z). */
+  map(): {
+    scope: 'sol' | 'hole';
+    extent: number;
+    bodies: Array<{ id: string; name: string; x: number; z: number }>;
+  };
 }
 
 const UP: Vec3d = [0, 1, 0];
@@ -100,112 +107,16 @@ export function blocked(a: Vec3d, b: Vec3d, spheres: readonly Sphere[]): boolean
   return false;
 }
 
-const KIND_LABEL: Record<PlanetKind, string> = {
-  rock: 'ROCKY PLANET',
-  ocean: 'OCEAN WORLD',
-  desert: 'DESERT PLANET',
-  gas: 'GAS GIANT',
-  ice: 'ICE GIANT',
-  lava: 'LAVA WORLD',
-};
-
-const SYSTEM_TUNING: FlightTuning = {
-  cruise: 2.5,
-  boost: 8,
-  response: 1.6,
-  turnRate: 1.3,
-  rollRate: 2.2,
-};
-
-/** A star system, in su, the star at the origin. */
-export class SystemLayer implements InnerLayer {
-  readonly kind = 'system';
-  readonly sceneId = 'world-system';
-  readonly tuning = SYSTEM_TUNING;
-  readonly rig: ChaseRig = { back: 0.5, up: 0.15, ahead: 1.25 };
-  readonly dustRadius = 3.75;
-  readonly speedUnit = 'SU/S';
-  readonly exitKly = 0.003;
-  readonly place: Target;
-  readonly interior: SystemInterior;
-  private readonly planetTargets: Target[];
-  private readonly spheres: Sphere[];
-
-  constructor(place: Target, interior: SystemInterior) {
-    this.place = place;
-    this.interior = interior;
-    this.planetTargets = interior.planets.map((p) => ({
-      id: p.id,
-      name: p.name,
-      kind: `${KIND_LABEL[p.kind]}${p.ring ? ', RINGED' : ''}`,
-      pos: p.pos,
-      lum: 0,
-      material: SYSTEM_MATERIAL[p.kind],
-    }));
-    this.spheres = [
-      { pos: [0, 0, 0], radius: interior.starRadius },
-      ...interior.planets.map((p) => ({ pos: p.pos, radius: p.radius })),
-    ];
-  }
-
-  spawn(from: Vec3d): { pos: Vec3d; orient: Quat } {
-    // just outside the outermost orbit, a little above the plane, looking at the star
-    const dir = normalize(add(normalize(from), [0, 0.12, 0]));
-    const pos = scale(dir, this.interior.edge - 3);
-    return { pos, orient: quatLookAt(scale(dir, -1), UP) };
-  }
-
-  targets(): Target[] {
-    return this.planetTargets;
-  }
-
-  sceneFrame(camPos: Vec3d): WorldFrame {
-    const rel = (p: Vec3d) => sub(p, camPos) as [number, number, number];
-    const i = this.interior;
-    return {
-      stars: [],
-      system: {
-        star: { rel: rel([0, 0, 0]), radius: i.starRadius, material: i.starMaterial, seed: 0 },
-        planets: i.planets.map((p) => ({
-          rel: rel(p.pos),
-          radius: p.radius,
-          material: SYSTEM_MATERIAL[p.kind],
-          seed: p.seed,
-          ring: p.ring ?? undefined,
-        })),
-      },
-    };
-  }
-
-  occluders(): readonly Sphere[] {
-    return this.spheres;
-  }
-
-  outside(pos: Vec3d): boolean {
-    return length(pos) > this.interior.edge;
-  }
-
-  formatDistance(d: number): string {
-    return `${d.toFixed(d < 10 ? 1 : 0)} SU`;
-  }
-
-  hudRows(pos: Vec3d): Array<[string, string]> {
-    const i = this.interior;
-    return [
-      ['STAR', this.formatDistance(Math.max(0, length(pos) - i.starRadius))],
-      ['PLANETS', String(i.planets.length)],
-      ['EDGE', this.formatDistance(Math.max(0, i.edge - length(pos)))],
-    ];
-  }
-}
-
 const LIGHT_KMS = 299792.458;
 const SOL_EDGE = 4.5;
+/** Half the width of the Solar System minimap (layer units). */
+export const SOL_MAP_EXTENT = SOL_EDGE;
 const SOL_SPAWN = 4.2;
 /** The scale unit never exceeds this far out in open space (au, squeezed). */
 const SOL_SCALE_MAX = 0.15;
 /** Exposure follows a body once the ship is within this many of its radii of the surface. */
 const SOL_FOCUS_RADII = 12;
+const SOL_CONTACT_RADII = 8;
 const SOL_DAYS_PER_S = SOLAR_SYSTEM_PARAMS.timeRate.default;
 
 /** "123,456 KM" or "1.23 AU", the way the Solar System scene reads out altitude. */
@@ -348,6 +259,20 @@ export class SolarLayer implements InnerLayer {
     return `${c.toFixed(c < 10 ? 1 : 0)} C`;
   }
 
+  /** Within this many radii of a surface counts as contact with that body. */
+  contact(): string {
+    const near = this.near;
+    return near && near.alt < near.radius * SOL_CONTACT_RADII ? near.id : 'solar-system';
+  }
+
+  map() {
+    const bodies = SOLAR_BODIES.filter((b) => b.id !== 'moon').map((b) => {
+      const pos = this.bodyTargets[b.index].pos;
+      return { id: b.id, name: b.name, x: pos[0], z: pos[2] };
+    });
+    return { scope: 'sol' as const, extent: SOL_EDGE, bodies };
+  }
+
   hudRows(): Array<[string, string]> {
     const near = this.near;
     return [
@@ -412,6 +337,14 @@ export class BlackHoleLayer implements InnerLayer {
 
   formatDistance(d: number): string {
     return `${d.toFixed(d < 10 ? 1 : 0)} RS`;
+  }
+
+  contact(): string {
+    return 'sgr-a-star';
+  }
+
+  map() {
+    return { scope: 'hole' as const, extent: HOLE_EDGE, bodies: [] };
   }
 
   hudRows(pos: Vec3d): Array<[string, string]> {

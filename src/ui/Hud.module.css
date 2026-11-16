@@ -1,45 +1,42 @@
-/* ---- HUD ------------------------------------------------------------------------------------ */
+/* ---- Status line (infographics mode) -------------------------------------------------------- */
 
-.hud {
+.status {
   position: absolute;
-  top: 16px;
   left: 16px;
-  min-width: 200px;
-  padding: 12px 14px;
+  bottom: 40px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  max-width: calc(100vw - 32px);
   font-size: 8px;
   line-height: 1;
+  text-shadow: 0 0 6px var(--glow);
   pointer-events: none;
 }
 
-.title {
-  margin-bottom: 12px;
-  color: var(--ink-bright);
-  letter-spacing: 1px;
-}
-
-.grid {
-  display: grid;
-  gap: 8px;
+.statusRows {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
   margin: 0;
 }
 
-.row {
+.statusRow {
   display: flex;
-  justify-content: space-between;
-  gap: 16px;
+  gap: 6px;
 }
 
-.row dt {
+.statusRow dt {
   color: var(--accent);
 }
 
-.row dd {
+.statusRow dd {
   margin: 0;
   color: var(--ink-bright);
 }
 
 .flags {
-  margin-top: 12px;
   color: var(--accent);
 }
 
@@ -52,6 +49,40 @@
   display: flex;
   gap: 12px;
   z-index: 5;
+}
+
+.modes {
+  display: flex;
+  box-shadow: 4px 4px 0 var(--ink-dim);
+}
+
+.mode {
+  min-width: 48px;
+  min-height: 40px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 8px;
+  color: var(--ink);
+  background: rgba(0, 0, 0, 0.78);
+  border: 2px solid var(--ink);
+  text-shadow: 0 0 6px var(--glow);
+  cursor: pointer;
+}
+
+.mode + .mode {
+  border-left: 0;
+}
+
+.mode:hover,
+.modeOn {
+  color: #000;
+  background: var(--ink);
+  text-shadow: none;
+}
+
+.mode:focus-visible {
+  outline: 2px dashed var(--ink-bright);
+  outline-offset: 3px;
 }
 
 .iconMenu {
@@ -71,24 +102,43 @@
   bottom: 16px;
   font-size: 8px;
   color: var(--ink-dim);
+  filter: brightness(1.6);
   pointer-events: none;
 }
 
 @media (max-width: 640px) {
-  .hud {
-    top: 12px;
+  .status {
     left: 12px;
-    min-width: 0;
-    padding: 10px;
-  }
-
-  .grid {
-    gap: 6px;
+    bottom: 12px;
   }
 
   .topbar {
     top: 12px;
     right: 12px;
+    gap: 8px;
+  }
+
+  .mode {
+    min-width: 40px;
+    padding: 0 8px;
+  }
+
+  .topbarLabel,
+  .keyHint {
+    display: none;
+  }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .status {
+    left: 8px;
+    bottom: 8px;
+  }
+
+  .topbar {
+    top: 8px;
+    right: 8px;
+    gap: 8px;
   }
 
   .topbarLabel,

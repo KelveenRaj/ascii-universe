@@ -2,7 +2,7 @@ import { SectorCache, sectorOf, type SectorCoord, type StarSystem } from '@/worl
 import { LANDMARKS, type Landmark } from '@/world/landmarks';
 import { distance, type Vec3d } from '@/world/math';
 
-/** Something you can point at, label and jump to: a procedural star system or a real landmark. */
+/** Something you can point at, label and jump to: a real landmark (or a procedural star, as scenery). */
 export interface Target {
   id: string;
   name: string;
@@ -73,8 +73,8 @@ export class Neighbourhood {
     return LANDMARK_TARGETS;
   }
 
-  /** Any target by id: a landmark, or a nearby system. */
+  /** A place you can visit, by id. The generated stars are scenery, not places. */
   find(id: string): Target | undefined {
-    return LANDMARK_TARGETS.find((t) => t.id === id) ?? this.local.find((t) => t.id === id);
+    return LANDMARK_TARGETS.find((t) => t.id === id);
   }
 }

@@ -1,10 +1,7 @@
 import type { GameModule } from '@/engine/game/Game';
-import { slingshotGame } from '@/games/slingshot';
 
-/** Every minigame, keyed by id. */
-export const GAMES: Record<string, GameModule> = {
-  [slingshotGame.id]: slingshotGame,
-};
+/** Every minigame, keyed by id. None for now: Slingshot is archived (git tag archive/pre-refine). */
+export const GAMES: Record<string, GameModule> = {};
 
 /** Lookup by an untrusted string (URL hash). */
 export function findGame(id: string): GameModule | undefined {
