@@ -1,6 +1,5 @@
 import { useStore } from 'zustand';
 import { navigationStore } from '@/state/navigation';
-import { settingsStore } from '@/state/settings';
 import { worldStore } from '@/state/world';
 import commonStyles from '@/ui/common.module.css';
 import { PixelButton } from '@/ui/controls';
@@ -42,7 +41,8 @@ function HoldButton(props: { code: string; label: string; title: string }) {
 export function WorldOverlay() {
   const world = useStore(navigationStore, (s) => s.world);
   const hud = useStore(worldStore, (s) => s.hud);
-  const asciiOn = useStore(settingsStore, (s) => s.ascii && s.debugView === 'final');
+  // the hangar panel takes that side of the screen, and the ship needs the rest
+  const hangarOpen = useStore(worldStore, (s) => s.hangarOpen);
   if (!world) return null;
   const land = () => navigationStore.getState().setWorld(false);
   const jump = () => worldStore.getState().request({ type: 'jump' });
@@ -69,7 +69,7 @@ export function WorldOverlay() {
         </dl>
       </aside>
 
-      {targets.length > 0 && (
+      {targets.length > 0 && !hangarOpen && (
         <nav
           className={cx(commonStyles.frame, own.targets)}
           aria-label="Targets"
@@ -104,12 +104,6 @@ export function WorldOverlay() {
           data-testid="world-message"
         >
           <p>{hud.message}</p>
-        </div>
-      )}
-
-      {!asciiOn && (
-        <div className={cx(commonStyles.frame, styles.message)} role="status">
-          <p>Your ship is drawn in ASCII. Turn it back on (G) to see it.</p>
         </div>
       )}
 

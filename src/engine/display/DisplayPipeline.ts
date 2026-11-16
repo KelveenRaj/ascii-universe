@@ -14,6 +14,7 @@ import {
   hexToRgb,
   luminance,
   sampleRamp,
+  updatePaletteRow,
   updatePaletteTexture,
   type Rgb,
 } from '@/engine/display/palette/lut';
@@ -107,19 +108,24 @@ export class DisplayPipeline {
 
   /** The active scene's materials and sky (combined with the palette mode). */
   private sceneColors: SceneColors;
+  /** Ramps set at run time (setMaterialRamp), by material id; they outlast scene changes. */
+  private readonly rampOverrides = new Map<string, Ramp>();
+  private paletteId: SettingsState['palette'];
 
   constructor(settings: SettingsState, sceneColors: SceneColors) {
     this.sceneColors = sceneColors;
+    this.paletteId = settings.palette;
     this.sceneTarget = new THREE.WebGLRenderTarget(1, 1, {
       type: THREE.HalfFloatType,
       format: THREE.RGBAFormat,
       minFilter: THREE.LinearFilter, // lets one tap average 2×2 texels when supersampling
       magFilter: THREE.LinearFilter,
-      depthBuffer: false,
+      // for meshes drawn over the ray-marched scene (your ship); scenes never touch it
+      depthBuffer: true,
       generateMipmaps: false,
     });
 
-    const { ramps, sky } = resolveColors(PALETTES[settings.palette], sceneColors);
+    const { ramps, sky } = resolveColors(PALETTES[settings.palette], this.withOverrides());
     this.lut = createPaletteTexture(ramps);
     this.colors = {
       starTint: new THREE.Vector3(...hexToRgb(sky.starTint)),
@@ -252,8 +258,37 @@ export class DisplayPipeline {
     this.applyPalette(s);
   }
 
+  /** The palette row of material `id` in the active scene, or -1 if it has none. */
+  materialRow(id: string): number {
+    return this.sceneColors.materials.findIndex((m) => m.id === id);
+  }
+
+  /**
+   * Gives material `id` a new ramp (your ship's colours), rewriting just its palette row. Under a
+   * terminal palette every row is that palette's ramp, so only the stored ramp changes until you
+   * switch back to natural colours. Kept across scene changes.
+   */
+  setMaterialRamp(id: string, ramp: Ramp): void {
+    if (this.rampOverrides.get(id) === ramp) return;
+    this.rampOverrides.set(id, ramp);
+    const row = this.materialRow(id);
+    if (row >= 0 && !PALETTES[this.paletteId].ramp) updatePaletteRow(this.lut, row, ramp);
+  }
+
+  private withOverrides(): SceneColors {
+    if (this.rampOverrides.size === 0) return this.sceneColors;
+    return {
+      sky: this.sceneColors.sky,
+      materials: this.sceneColors.materials.map((m) => {
+        const ramp = this.rampOverrides.get(m.id);
+        return ramp ? { ...m, ramp } : m;
+      }),
+    };
+  }
+
   private applyPalette(s: SettingsState): void {
-    const { ramps, sky } = resolveColors(PALETTES[s.palette], this.sceneColors);
+    this.paletteId = s.palette;
+    const { ramps, sky } = resolveColors(PALETTES[s.palette], this.withOverrides());
     updatePaletteTexture(this.lut, ramps);
     this.colors.starTint.set(...hexToRgb(sky.starTint));
     this.colors.background.set(...hexToRgb(sky.background));

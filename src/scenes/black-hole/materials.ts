@@ -1,4 +1,5 @@
 import type { Material, Sky } from '@/engine/display/palette/palettes';
+import { SHIP_MATERIALS } from '@/world/ship/colors';
 
 /**
  * The black hole's colours. EHT images are false-colour maps of brightness temperature, not true
@@ -6,6 +7,7 @@ import type { Material, Sky } from '@/engine/display/palette/palettes';
  * orange → amber → pale yellow ramp).
  *
  * Order matters: a material's index here is the value blackhole.frag writes into the B channel.
+ * Your ship's rows come last, for the open world, where you fly round Sgr A* (see ShipPass).
  */
 export const BLACK_HOLE_MATERIALS = [
   {
@@ -27,6 +29,7 @@ export const BLACK_HOLE_MATERIALS = [
       interpolation: 'linear',
     },
   },
+  ...SHIP_MATERIALS,
 ] as const satisfies readonly Material[];
 
 export const BLACK_HOLE_SKY: Sky = { starTint: '#9AA3B8', background: '#050302' };

@@ -1,9 +1,12 @@
 import * as THREE from 'three';
 import { projectToGrid } from '@/engine/display/labels';
 import type { TextLayer, TextStyle } from '@/engine/display/TextLayer';
-import { shipViews } from '@/world/ship/compose';
-import type { ShipColorId, ShipDesign, TrailGlyphId } from '@/world/ship/design';
-import type { Tone } from '@/world/ship/parts';
+import type { ShipDesign, TrailGlyphId } from '@/world/ship/design';
+
+/*
+ * Slingshot's little text ship, and the open world's engine trail. (Your ship in the open world is
+ * a 3D mesh now: model.ts and ShipPass.ts.)
+ */
 
 /** One cell of a sprite: offset from the ship's cell (row down), character, style. */
 type Cell = [dc: number, dr: number, ch: string, style: TextStyle];
@@ -180,46 +183,10 @@ const TRAIL_CHARS: Record<TrailGlyphId, [string, string]> = {
   sparks: ['+', "'"],
 };
 
-/** The text style for each part tone, for a ship painted `color`. */
-export function toneStyle(tone: Tone, color: ShipColorId): TextStyle {
-  if (tone === 'main') return `swatch:${color}`;
-  return tone === 'glow' ? 'accent' : 'normal';
-}
-
-/**
- * Draws a pilot's ship, as designed in the hangar, at world `position` flying along `velocity`.
- * While `burning`, a flickering exhaust comes out of the engine (`frame` drives the flicker).
- */
-export function drawDesignedShip(
-  text: TextLayer,
-  camera: THREE.Camera,
-  tanHalfFov: number,
-  position: THREE.Vector3,
-  velocity: THREE.Vector3,
-  design: ShipDesign,
-  burning: boolean,
-  frame: number,
-): void {
-  const at = projectToGrid(position, camera, tanHalfFov, text.cols, text.rows);
-  if (!at) return;
-  const views = shipViews(design);
-  const pose = shipPose(velocity, camera);
-  const cells =
-    pose.kind === 'side' ? views.side[pose.dir] : pose.kind === 'rear' ? views.rear : views.front;
-  if (burning && pose.kind !== 'front') {
-    const flicker = frame % 2 === 0;
-    const spots = pose.kind === 'side' ? views.exhaustSide[pose.dir] : views.exhaustRear;
-    text.put(at.col + spots[0][0], at.row + spots[0][1], flicker ? '*' : '~', 'accent');
-    text.put(at.col + spots[1][0], at.row + spots[1][1], flicker ? '.' : '*', 'accent');
-  }
-  for (const { dc, dr, ch, tone } of cells) {
-    text.put(at.col + dc, at.row + dr, ch, toneStyle(tone, design.color));
-  }
-}
-
 /**
  * The engine trail: where the ship has been, sampled as it flies and drawn as fading glyphs in
- * the trail's colour. Positions are world points in the layer's units; reset on a layer change.
+ * the trail's colour. Positions are world points in the layer's units (the engine's, as it
+ * flies); reset on a layer change.
  */
 export class Trail {
   private readonly points: THREE.Vector3[] = [];
@@ -262,7 +229,8 @@ export class Trail {
     camera: THREE.Camera,
     tanHalfFov: number,
     trail: ShipDesign['trail'],
-    ship: { col: number; row: number } | null,
+    /** Cells the ship covers on screen (inclusive), kept clear of trail glyphs. */
+    ship: { col0: number; row0: number; col1: number; row1: number } | null,
   ): void {
     const max = [0, 12, 24][trail.length];
     const n = Math.min(this.count, max);
@@ -272,7 +240,15 @@ export class Trail {
       const g = projectToGrid(p, camera, tanHalfFov, text.cols, text.rows);
       if (!g) continue;
       // never over the ship itself
-      if (ship && Math.abs(g.col - ship.col) <= 2 && Math.abs(g.row - ship.row) <= 2) continue;
+      if (
+        ship &&
+        g.col >= ship.col0 &&
+        g.col <= ship.col1 &&
+        g.row >= ship.row0 &&
+        g.row <= ship.row1
+      ) {
+        continue;
+      }
       const older = i > n / 2;
       text.put(g.col, g.row, older ? far : near, older ? 'dim' : `swatch:${trail.color}`);
     }

@@ -1,5 +1,6 @@
 import type { CameraSetup } from '@/engine/camera/CameraController';
 import type { SceneModule } from '@/engine/scene/SceneModule';
+import { SHIP_MATERIALS } from '@/world/ship/colors';
 import { MILKY_WAY_MATERIALS, MILKY_WAY_SKY } from '@/scenes/milky-way/materials';
 import { WORLD_GALAXY_PARAMS } from '@/scenes/world-galaxy/params';
 import { WorldGalaxyPass } from '@/scenes/world-galaxy/WorldGalaxyPass';
@@ -21,7 +22,8 @@ export const worldGalaxyScene: SceneModule<typeof WORLD_GALAXY_PARAMS> = {
   id: 'world-galaxy',
   title: 'Open space',
   camera: CAMERA,
-  materials: MILKY_WAY_MATERIALS,
+  // the scene's own, then your ship's (ShipPass)
+  materials: [...MILKY_WAY_MATERIALS, ...SHIP_MATERIALS],
   sky: MILKY_WAY_SKY,
   params: WORLD_GALAXY_PARAMS,
   create: ({ tanHalfFov }) => new WorldGalaxyPass(tanHalfFov),

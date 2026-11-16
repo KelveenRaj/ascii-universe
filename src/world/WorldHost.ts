@@ -20,10 +20,12 @@ import { BlackHoleLayer, blocked, keepOut, SystemLayer, type InnerLayer } from '
 import type { WorldLocation } from '@/world/location';
 import {
   add,
+  cross,
   distance,
   dot,
   length,
   normalize,
+  rotate,
   quatFromAxisAngle,
   quatLookAt,
   quatMul,
@@ -35,7 +37,9 @@ import {
 } from '@/world/math';
 import { Neighbourhood, type Target } from '@/world/Neighbourhood';
 import { DEFAULT_SHIP, type ShipDesign } from '@/world/ship/design';
-import { drawDesignedShip, Trail } from '@/world/ship/sprite';
+import { shipModel } from '@/world/ship/model';
+import type { ShipView } from '@/world/ship/ShipPass';
+import { Trail } from '@/world/ship/sprite';
 import { formatDistance, nearStars } from '@/world/stars';
 
 /** Where a new pilot starts: just above the Sun's spot in the disk, nose towards the core. */
@@ -70,6 +74,15 @@ const MESSAGE_S = 4;
 
 const GALAXY_RIG: ChaseRig = { back: 0.004, up: 0.0012, ahead: 0.01 };
 const GALAXY_DUST = 0.03;
+
+/**
+ * Your ship's length as a share of the chase camera's distance in every layer: about 20–25 cells
+ * nose to tail side-on at the default grid.
+ */
+const SHIP_SIZE = 0.24;
+/** The hangar's camera: how fast it circles your ship (rad/s), and how high above it (rad). */
+const SHOWROOM_SPIN = 0.3;
+const SHOWROOM_RISE = 0.32;
 
 const isSgr = (t: Target) => t.id === 'sgr-a-star';
 const standOff = (t: Target) => (isSgr(t) ? STAND_OFF_SGR : STAND_OFF);
@@ -130,7 +143,6 @@ export class WorldHost {
     up: new THREE.Vector3(),
   };
   private readonly shipPos = new THREE.Vector3();
-  private readonly shipDir = new THREE.Vector3();
   private readonly targetPos = new THREE.Vector3();
   private readonly local = new THREE.Vector3();
   private sinceSave = 0;
@@ -148,6 +160,8 @@ export class WorldHost {
   /** Places you're within visiting range of, so a visit counts once per stay. */
   private visiting = new Set<string>();
   private camPos: Vec3d = [0, 0, 0];
+  /** The hangar is open: the flight is parked and the camera circles the ship (angle, rad). */
+  private showroom: { angle: number } | null = null;
   /** The last frame handed to a scene, kept for the old scene while a warp swaps it out. */
   private lastFrame: { sceneId: string; frame: WorldFrame } | null = null;
   /**
@@ -242,6 +256,7 @@ export class WorldHost {
     this.flight = null;
     this.jump = null;
     this.inner = null;
+    this.showroom = null;
     this.input.setEnabled(false);
     worldStore.setState({
       hud: null,
@@ -325,10 +340,18 @@ export class WorldHost {
     return { layer: 'landmark', landmarkId: layer.place.id, pos };
   }
 
-  /** Flies one frame. `frozen` holds everything still (paused, warping, or dev screenshots). */
-  update(dt: number, frozen: boolean): void {
+  /**
+   * Flies one frame. `frozen` holds everything still (paused, warping, or dev screenshots).
+   * `view` is the screen's shape, for framing the ship while the hangar is open.
+   */
+  update(dt: number, frozen: boolean, view: { aspect: number; tanHalfFov: number }): void {
     const flight = this.flight;
     if (!flight) return;
+    if (this.syncShowroom(flight)) {
+      this.showroomCamera(flight, frozen ? 0 : dt, view);
+      this.publishHud(flight);
+      return;
+    }
     const step = frozen ? 0 : dt;
     if (!frozen) this.handleRequests(flight);
     const before = flight.pos;
@@ -341,7 +364,8 @@ export class WorldHost {
     // no trail through hyperspace: it would draw a line across the sky
     if (this.jump) this.trail.reset();
     else if (step > 0) {
-      toV3(flight.pos, this.shipPos);
+      // the trail starts at the engine, not the middle of the ship
+      toV3(add(flight.pos, scale(flight.forward, -this.shipLength() / 2)), this.shipPos);
       this.trail.update(step, this.shipPos, flight.speed > 1e-9);
     }
 
@@ -372,6 +396,133 @@ export class WorldHost {
     toV3(cam.target, this.pose.target);
     toV3(cam.up, this.pose.up);
     this.publishHud(flight);
+  }
+
+  /** Your ship's length in the current layer's units. */
+  private shipLength(): number {
+    const rig = this.chase.rig;
+    return Math.hypot(rig.back, rig.up) * SHIP_SIZE;
+  }
+
+  /**
+   * Opens or closes the showroom with the hangar. Opening parks the flight (stopped, no input);
+   * closing hands the camera back to the chase rig. Returns whether it's open.
+   */
+  private syncShowroom(flight: FlightModel): boolean {
+    const open = worldStore.getState().hangarOpen;
+    if (open && !this.showroom) {
+      // start from about where the chase camera was: behind the ship, swinging round
+      this.showroom = { angle: Math.PI - 0.5 };
+      flight.throttle = 0;
+      flight.vel = [0, 0, 0];
+      this.input.setEnabled(false);
+    } else if (!open && this.showroom) {
+      this.showroom = null;
+      this.input.setEnabled(true);
+      this.chase.reset();
+    }
+    return this.showroom !== null;
+  }
+
+  /**
+   * The hangar's camera: slowly circling the ship, a little above it, with the ship framed in the
+   * part of the screen the hangar panel leaves free (left of it on a wide screen, above the bottom
+   * sheet on a tall one, matching Hangar.module.css's orientation query).
+   */
+  private showroomCamera(
+    flight: FlightModel,
+    dt: number,
+    view: { aspect: number; tanHalfFov: number },
+  ): void {
+    const show = this.showroom!;
+    show.angle += dt * SHOWROOM_SPIN;
+    const tall = view.aspect < 1;
+    const len = this.shipLength();
+    // how much of the screen's width the ship spans
+    const span = tall ? 0.85 : 0.36;
+    const dist = Math.max(len * 1.3, len / (2 * view.tanHalfFov * view.aspect * span));
+    const fwd = flight.forward;
+    const up = flight.up;
+    const right = cross(fwd, up);
+    const around = add(scale(fwd, Math.cos(show.angle)), scale(right, Math.sin(show.angle)));
+    const dir = add(scale(around, Math.cos(SHOWROOM_RISE)), scale(up, Math.sin(SHOWROOM_RISE)));
+    const position = add(flight.pos, scale(dir, dist));
+    // aim beside the ship so it lands at (sx, sy) on screen
+    const sx = tall ? 0 : -0.32;
+    const sy = tall ? 0.42 : 0.04;
+    const cf = normalize(sub(flight.pos, position));
+    const cr = normalize(cross(cf, up));
+    const cu = cross(cr, cf);
+    const target = add(
+      flight.pos,
+      add(
+        scale(cr, -sx * view.tanHalfFov * view.aspect * dist),
+        scale(cu, -sy * view.tanHalfFov * dist),
+      ),
+    );
+    this.camPos = position;
+    toV3(position, this.pose.position);
+    toV3(target, this.pose.target);
+    toV3(up, this.pose.up);
+  }
+
+  /**
+   * Your ship for ShipPass this frame, or null when there's nothing to draw (not flying, or hidden
+   * behind a planet, the star or the hole).
+   */
+  shipView(): ShipView | null {
+    const flight = this.flight;
+    if (!flight) return null;
+    if (this.inner && blocked(this.camPos, flight.pos, this.inner.occluders())) return null;
+    const cruise = flight.tuning.cruise;
+    const travelling = this.jump?.phase === 'travel';
+    const glow = travelling ? 1.6 : flight.boosting ? 1.4 : flight.throttle;
+    const exhaust = travelling
+      ? 1
+      : Math.min(1, (0.75 * flight.speed) / cruise + (flight.boosting ? 0.25 : 0));
+    // every layer has its light at the origin: the core, the system's star, Sgr A*'s flow
+    const r = length(flight.pos);
+    const light: Vec3d = r > 1e-12 ? scale(flight.pos, -1 / r) : [0, 1, 0];
+    return {
+      design: this.design(),
+      rel: sub(flight.pos, this.camPos),
+      orient: flight.orient,
+      length: this.shipLength(),
+      light,
+      glow: this.showroom ? 0.3 : glow,
+      exhaust: this.showroom ? 0 : exhaust,
+    };
+  }
+
+  /** The cells the ship covers on screen (from its bounding box), or null if it's behind you. */
+  private shipCells(
+    view: GameView,
+    cols: number,
+    rows: number,
+  ): { col0: number; row0: number; col1: number; row1: number } | null {
+    const flight = this.flight!;
+    const box = shipModel(this.design()).geometry.boundingBox!;
+    const len = this.shipLength();
+    let out: { col0: number; row0: number; col1: number; row1: number } | null = null;
+    for (let i = 0; i < 8; i++) {
+      const c: Vec3d = [
+        (i & 1 ? box.max.x : box.min.x) * len,
+        (i & 2 ? box.max.y : box.min.y) * len,
+        (i & 4 ? box.max.z : box.min.z) * len,
+      ];
+      toV3(add(flight.pos, rotate(flight.orient, c)), this.local);
+      const g = projectToGrid(this.local, view.camera, view.tanHalfFov, cols, rows);
+      if (!g) return null;
+      out = out
+        ? {
+            col0: Math.min(out.col0, g.col),
+            row0: Math.min(out.row0, g.row),
+            col1: Math.max(out.col1, g.col),
+            row1: Math.max(out.row1, g.row),
+          }
+        : { col0: g.col, row0: g.row, col1: g.col, row1: g.row };
+    }
+    return out;
   }
 
   private refreshNearby(pos: Vec3d): void {
@@ -550,27 +701,13 @@ export class WorldHost {
 
   draw(text: TextLayer, view: GameView): void {
     const flight = this.flight;
-    if (!flight) return;
+    // the ship itself is a mesh in the scene (ShipPass); in the hangar only the ship shows
+    if (!flight || this.showroom) return;
     this.dust.draw(text, view.camera, view.tanHalfFov, flight.pos, flight.vel);
     if (this.target) this.drawTarget(text, view, flight, this.target);
-    const design = this.design();
-    toV3(flight.pos, this.shipPos);
-    const at = projectToGrid(this.shipPos, view.camera, view.tanHalfFov, text.cols, text.rows);
-    this.trail.draw(text, view.camera, view.tanHalfFov, design.trail, at);
-    // hidden behind a planet (or the star, or the hole)
-    if (this.inner && blocked(this.camPos, flight.pos, this.inner.occluders())) return;
-    toV3(flight.forward, this.shipDir);
-    const burning = !!this.jump || flight.boosting || (flight.throttle > 0 && this.frame % 4 < 3);
-    drawDesignedShip(
-      text,
-      view.camera,
-      view.tanHalfFov,
-      this.shipPos,
-      this.shipDir,
-      design,
-      burning,
-      this.frame >> 2,
-    );
+    const hidden = this.inner && blocked(this.camPos, flight.pos, this.inner.occluders());
+    const ship = hidden ? null : this.shipCells(view, text.cols, text.rows);
+    this.trail.draw(text, view.camera, view.tanHalfFov, this.design().trail, ship);
   }
 
   /** Your ship as designed in the hangar (the default until the profile has loaded). */

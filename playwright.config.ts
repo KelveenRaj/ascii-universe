@@ -1,6 +1,7 @@
 import { defineConfig } from '@playwright/test';
 
-const PORT = 5199;
+// PW_PORT lets parallel checkouts run the suite side by side
+const PORT = Number(process.env.PW_PORT) || 5199;
 
 /**
  * Visual regression tests: fixed camera views rendered through the real pipeline, compared against

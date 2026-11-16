@@ -19,6 +19,7 @@ import { Warp } from '@/engine/transition/Warp';
 import { activeBody, activeScene, navigationStore } from '@/state/navigation';
 import { sceneParamsStore } from '@/state/sceneParams';
 import { worldStore } from '@/state/world';
+import { ShipPass } from '@/world/ship/ShipPass';
 import { WorldHost } from '@/world/WorldHost';
 
 const FOV_DEG = 50;
@@ -63,6 +64,8 @@ export class Engine {
   private pressAt: { x: number; y: number } | null = null;
   private readonly games: GameHost;
   private readonly world: WorldHost;
+  /** Your ship's mesh, drawn into the scene buffer over the open world's scenes. */
+  private readonly shipPass = new ShipPass();
   private readonly gameView: GameView;
   /** The running game placed the camera itself last frame. */
   private gameCameraFixed = false;
@@ -421,7 +424,11 @@ export class Engine {
       // frozen while warping; until the flight's scene is on screen (the first half of a warp),
       // the camera holds still too
       const onScreen = this.world.sceneId === this.sceneId;
-      this.world.update(dt, s.paused || this.frozenTime !== null || this.warp !== null);
+      this.world.update(
+        dt,
+        s.paused || this.frozenTime !== null || this.warp !== null,
+        this.gameView,
+      );
       if (onScreen) this.applyWorldCamera();
     } else if (this.games.active) {
       this.games.update(dt, this.gameView);
@@ -444,12 +451,28 @@ export class Engine {
       frozenTime: this.frozenTime,
       world: this.world.sceneFrame(this.sceneId),
     });
+    this.renderShip();
     this.drawLabels(s);
     this.display.render(this.renderer, s, timeMs);
 
     if (this.display.fontReady && !statsStore.getState().ready)
       statsStore.setState({ ready: true });
     this.updateStats(timeMs, steps, tier ? `AUTO·${tier.name}` : s.quality.toUpperCase());
+  }
+
+  /** Your ship, over the scene it flies in (not while the previous layer's scene is still up). */
+  private renderShip(): void {
+    if (!this.world.active || this.world.sceneId !== this.sceneId) return;
+    const view = this.world.shipView();
+    if (!view) return;
+    this.shipPass.render(
+      this.renderer,
+      this.display.sceneTarget,
+      this.camera,
+      this.tanHalfFov,
+      this.display,
+      view,
+    );
   }
 
   /**
@@ -509,6 +532,7 @@ export class Engine {
     this.unsubscribers.forEach((off) => off());
     this.games.dispose();
     this.world.dispose();
+    this.shipPass.dispose();
     this.input.dispose();
     this.scene.dispose();
     this.display.dispose();
