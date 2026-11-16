@@ -39,3 +39,6 @@ Thumbs.db
 # Playwright
 test-results
 playwright-report
+
+# raw planet maps (downloaded by scripts/planet-maps.mjs; see public/maps/SOURCES.md)
+maps-src/

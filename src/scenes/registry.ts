@@ -1,6 +1,7 @@
 import type { SceneModule } from '@/engine/scene/SceneModule';
 import { blackHoleScene } from '@/scenes/black-hole';
 import { milkyWayScene } from '@/scenes/milky-way';
+import { solarSystemScene } from '@/scenes/solar-system';
 import { worldGalaxyScene } from '@/scenes/world-galaxy';
 import { worldSystemScene } from '@/scenes/world-system';
 
@@ -12,6 +13,7 @@ import { worldSystemScene } from '@/scenes/world-system';
 export const SCENES = {
   'milky-way': milkyWayScene,
   'black-hole': blackHoleScene,
+  'solar-system': solarSystemScene,
   'world-galaxy': worldGalaxyScene,
   'world-system': worldSystemScene,
 } as const satisfies Record<string, SceneModule>;

@@ -77,7 +77,7 @@ export class GalaxyPass implements SceneInstance<MilkyWayParams> {
   }
 
   /**
-   * Sgr A* at the centre (click it to warp there), the Sun, and the spiral arms by name (from the
+   * Sgr A* at the centre and the Sun (click either to warp there), and the spiral arms by name (from the
    * same arm model the shader draws), all turning with the galaxy. Arm names would pile up on one
    * line seen edge-on, so they only show from 25° above the disk.
    */
@@ -85,7 +85,7 @@ export class GalaxyPass implements SceneInstance<MilkyWayParams> {
     galaxyToWorld(GALAXY.sunRadius, GALAXY.sunAngle, this.turned, this.sun);
     const labels: SceneLabel[] = [
       { position: this.centre, text: 'SGR A*', radius: 2.5, target: 'sgr-a-star' },
-      { position: this.sun, text: 'SUN', radius: 1, style: 'normal' },
+      { position: this.sun, text: 'SUN', radius: 1, style: 'normal', target: 'solar-system' },
     ];
     if (this.elevation > Math.sin((25 * Math.PI) / 180)) {
       for (const a of this.armLabels) {
