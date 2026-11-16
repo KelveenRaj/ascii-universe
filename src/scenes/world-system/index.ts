@@ -1,5 +1,6 @@
 import type { CameraSetup } from '@/engine/camera/CameraController';
 import type { SceneModule } from '@/engine/scene/SceneModule';
+import { SHIP_MATERIALS } from '@/world/ship/colors';
 import { WORLD_SYSTEM_MATERIALS, WORLD_SYSTEM_SKY } from '@/scenes/world-system/materials';
 import { WORLD_SYSTEM_PARAMS } from '@/scenes/world-system/params';
 import { WorldSystemPass } from '@/scenes/world-system/WorldSystemPass';
@@ -18,7 +19,8 @@ export const worldSystemScene: SceneModule<typeof WORLD_SYSTEM_PARAMS> = {
   id: 'world-system',
   title: 'Star system',
   camera: CAMERA,
-  materials: WORLD_SYSTEM_MATERIALS,
+  // the scene's own, then your ship's (ShipPass)
+  materials: [...WORLD_SYSTEM_MATERIALS, ...SHIP_MATERIALS],
   sky: WORLD_SYSTEM_SKY,
   params: WORLD_SYSTEM_PARAMS,
   create: ({ tanHalfFov }) => new WorldSystemPass(tanHalfFov),

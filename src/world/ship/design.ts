@@ -2,13 +2,13 @@ import { TEXT_CHARS } from '@/engine/display/glyphs/ramps';
 
 /**
  * A pilot's ship as they designed it in the hangar: three parts, a colour, an engine trail and a
- * name. This is what gets saved (and later synced), so it only holds ids; the part sprites live in
- * code (parts.ts, W4) and can be redrawn without touching saves.
+ * name. This is what gets saved (and later synced), so it only holds ids; the parts' meshes live in
+ * code (model.ts) and can be rebuilt without touching saves.
  */
 export const HULLS = ['dart', 'arrow', 'hauler', 'saucer'] as const;
 export const WINGS = ['swept', 'delta', 'stub', 'ring'] as const;
 export const ENGINES = ['ion', 'twin', 'fusion', 'sail'] as const;
-/** Colour swatches. The text layer gets one style per swatch (W4). */
+/** Colour swatches: the hull's palette row is built from one (colors.ts), the trail's text style from another. */
 export const SHIP_COLORS = [
   'white',
   'amber',

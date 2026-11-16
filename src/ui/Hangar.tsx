@@ -1,14 +1,13 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { useStore } from 'zustand';
 import { TEXT_SWATCHES } from '@/engine/display/TextLayer';
 import { track } from '@/profile/EventSink';
 import { profileStore } from '@/state/profile';
 import { worldStore } from '@/state/world';
-import { PixelButton, Section } from '@/ui/controls';
+import commonStyles from '@/ui/common.module.css';
+import { PanelHeader, PixelButton, Section } from '@/ui/controls';
 import { cx } from '@/ui/cx';
-import { Dialog } from '@/ui/Dialog';
 import styles from '@/ui/Hangar.module.css';
-import { shipViews } from '@/world/ship/compose';
 import {
   cleanName,
   DEFAULT_SHIP,
@@ -21,85 +20,18 @@ import {
   type ShipColorId,
   type ShipDesign,
 } from '@/world/ship/design';
-import {
-  ENGINE_PARTS,
-  HULL_PARTS,
-  WING_PARTS,
-  type ScreenCell,
-  type Tone,
-} from '@/world/ship/parts';
+import { ENGINE_LABELS, HULL_LABELS, WING_LABELS } from '@/world/ship/model';
 
 const HEX = Object.fromEntries(TEXT_SWATCHES.map((s) => [s.id, s.hex])) as Record<
   ShipColorId,
   string
 >;
 
-/** Preview spin: the 8 side views turning, then from behind and ahead. */
-const SPIN = [
-  'side:0',
-  'side:7',
-  'side:6',
-  'side:5',
-  'side:4',
-  'side:3',
-  'side:2',
-  'side:1',
-  'rear',
-  'front',
-];
-const SPIN_MS = 450;
-/** Preview grid size (cells). */
-const COLS = 11;
-const ROWS = 7;
-
 const TRAIL_LABEL = { dots: 'DOTS', dashes: 'DASHES', stars: 'STARS', sparks: 'SPARKS' };
 const LENGTH_LABEL = ['OFF', 'SHORT', 'LONG'];
 
 const next = <T,>(list: readonly T[], v: T, step: 1 | -1) =>
   list[(list.indexOf(v) + step + list.length) % list.length];
-
-/** The ship drawn in a small character grid, in its colours, one view at a time. */
-function ShipPreview({ design, view }: { design: ShipDesign; view: string }) {
-  const views = shipViews(design);
-  const cells: ScreenCell[] =
-    view === 'rear'
-      ? views.rear
-      : view === 'front'
-        ? views.front
-        : views.side[Number(view.slice(5))];
-  const grid: Array<Array<{ ch: string; tone: Tone } | null>> = Array.from({ length: ROWS }, () =>
-    Array<{ ch: string; tone: Tone } | null>(COLS).fill(null),
-  );
-  const c0 = Math.floor(COLS / 2);
-  const r0 = Math.floor(ROWS / 2);
-  for (const { dc, dr, ch, tone } of cells) {
-    const row = grid[r0 + dr];
-    if (row && c0 + dc >= 0 && c0 + dc < COLS) row[c0 + dc] = { ch, tone };
-  }
-  const color = (tone: Tone): CSSProperties['color'] =>
-    tone === 'main' ? HEX[design.color] : tone === 'glow' ? 'var(--accent)' : 'var(--ink-dim)';
-  return (
-    <pre
-      className={styles.preview}
-      aria-label={`${design.name}, preview`}
-      data-testid="ship-preview"
-    >
-      {grid.map((row, r) => (
-        <div key={r}>
-          {row.map((cell, c) =>
-            cell ? (
-              <span key={c} style={{ color: color(cell.tone) }}>
-                {cell.ch}
-              </span>
-            ) : (
-              ' '
-            ),
-          )}
-        </div>
-      ))}
-    </pre>
-  );
-}
 
 /** ◀ NAME ▶ for one part slot. */
 function Picker(props: { label: string; value: string; onStep: (step: 1 | -1) => void }) {
@@ -140,13 +72,17 @@ function Swatches(props: { label: string; value: ShipColorId; onPick: (c: ShipCo
 }
 
 /**
- * The hangar: design your ship. Hull, wings and engine, a colour, a name, and the trail it leaves.
+ * The hangar: design your ship, looking at the real thing. A panel down the right (a sheet along
+ * the bottom on a tall screen) while the flight is parked and the camera circles your ship in the
+ * space that's left (WorldHost's showroom). Hull, wings and engine, a colour, a name, and the trail
+ * it leaves. Hull, wings and engine, a colour, a name, and the trail it leaves.
  * Every change is saved to your pilot profile straight away and shows on the ship in flight.
  */
 export function Hangar() {
   const open = useStore(worldStore, (s) => s.hangarOpen);
   const ship = useStore(profileStore, (s) => s.profile?.ship ?? DEFAULT_SHIP);
-  const [frame, setFrame] = useState(0);
+  const ref = useRef<HTMLElement>(null);
+  const titleId = useId();
 
   useEffect(() => {
     if (!open) return;
@@ -161,13 +97,8 @@ export function Hangar() {
         track('ship_saved', { hull, wings, engine, color });
       }
     };
-    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
-    if (reduced) return save;
-    const id = setInterval(() => setFrame((f) => f + 1), SPIN_MS);
-    return () => {
-      clearInterval(id);
-      save();
-    };
+    ref.current?.focus();
+    return save;
   }, [open]);
 
   if (!open) return null;
@@ -178,11 +109,17 @@ export function Hangar() {
     set({ trail: { ...ship.trail, ...change } });
 
   return (
-    <Dialog title="HANGAR" onClose={close} className={styles.hangar}>
+    <aside
+      ref={ref}
+      className={cx(commonStyles.frame, styles.hangar)}
+      role="dialog"
+      aria-labelledby={titleId}
+      tabIndex={-1}
+      data-ui
+    >
+      <PanelHeader title="HANGAR" titleId={titleId} onClose={close} />
       <div className={styles.body} data-testid="hangar">
         <div className={styles.left}>
-          <ShipPreview design={ship} view={SPIN[frame % SPIN.length]} />
-
           <Section title="NAME">
             <input
               className={styles.name}
@@ -199,17 +136,17 @@ export function Hangar() {
           <Section title="PARTS">
             <Picker
               label="HULL"
-              value={HULL_PARTS[ship.hull].label}
+              value={HULL_LABELS[ship.hull]}
               onStep={(s) => set({ hull: next(HULLS, ship.hull, s) })}
             />
             <Picker
               label="WINGS"
-              value={WING_PARTS[ship.wings].label}
+              value={WING_LABELS[ship.wings]}
               onStep={(s) => set({ wings: next(WINGS, ship.wings, s) })}
             />
             <Picker
               label="ENGINE"
-              value={ENGINE_PARTS[ship.engine].label}
+              value={ENGINE_LABELS[ship.engine]}
               onStep={(s) => set({ engine: next(ENGINES, ship.engine, s) })}
             />
           </Section>
@@ -243,6 +180,6 @@ export function Hangar() {
           </div>
         </div>
       </div>
-    </Dialog>
+    </aside>
   );
 }

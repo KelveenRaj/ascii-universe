@@ -1,12 +1,21 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { textColors } from '@/engine/display/DisplayPipeline';
-import { TEXT_CHARS } from '@/engine/display/glyphs/ramps';
-import { hexToRgb } from '@/engine/display/palette/lut';
+import { hexToRgb, luminance, sampleRamp } from '@/engine/display/palette/lut';
 import { PALETTES } from '@/engine/display/palette/palettes';
 import { TEXT_STYLES, TEXT_SWATCHES, TextLayer } from '@/engine/display/TextLayer';
 import { MILKY_WAY_MATERIALS } from '@/scenes/milky-way/materials';
-import { axisToCell, composeShip, shipViews } from '@/world/ship/compose';
+import { blackHoleScene } from '@/scenes/black-hole';
+import { worldGalaxyScene } from '@/scenes/world-galaxy';
+import { worldSystemScene } from '@/scenes/world-system';
+import {
+  glowRamp,
+  hullRamp,
+  SHIP_GLOW,
+  SHIP_HULL,
+  SHIP_MATERIALS,
+  SHIP_TRIM,
+} from '@/world/ship/colors';
 import {
   DEFAULT_SHIP,
   ENGINES,
@@ -17,65 +26,99 @@ import {
   WINGS,
   type ShipDesign,
 } from '@/world/ship/design';
-import { SIDE, Trail } from '@/world/ship/sprite';
+import {
+  ENGINE_LABELS,
+  exhaustGeometry,
+  HULL_LABELS,
+  PART_GLOW,
+  PART_HULL,
+  PART_TRIM,
+  shipModel,
+  WING_LABELS,
+} from '@/world/ship/model';
+import { Trail } from '@/world/ship/sprite';
 
 const ALL = HULLS.flatMap((hull) =>
   WINGS.flatMap((wings) => ENGINES.map((engine) => ({ hull, wings, engine }))),
 );
 
-describe('ship parts', () => {
-  it('draws the default ship exactly like the classic sprite, side-on in every direction', () => {
-    const views = composeShip(DEFAULT_SHIP);
-    for (let dir = 0; dir < 8; dir++) {
-      const got = views.side[dir].map((c) => `${c.dc},${c.dr},${c.ch}`).sort();
-      const want = SIDE[dir].map(([dc, dr, ch]) => `${dc},${dr},${ch}`).sort();
-      expect(got, `direction ${dir}`).toEqual(want);
-    }
-  });
-
-  it('has all 10 views for every combination, centred, in drawable characters', () => {
-    const drawable = new Set(TEXT_CHARS);
+describe('ship mesh', () => {
+  it('builds every combination: about one unit long, bounded, nose at -Z, all three parts', () => {
     for (const design of ALL) {
-      const v = composeShip(design);
-      const views = [...v.side, v.rear, v.front];
-      expect(views).toHaveLength(10);
-      for (const cells of views) {
-        expect(cells.some((c) => c.dc === 0 && c.dr === 0)).toBe(true);
-        for (const c of cells) {
-          expect(drawable.has(c.ch), `${c.ch} in ${JSON.stringify(design)}`).toBe(true);
-          // small enough to read as one ship on a coarse grid
-          expect(Math.abs(c.dc)).toBeLessThanOrEqual(3);
-          expect(Math.abs(c.dr)).toBeLessThanOrEqual(3);
-        }
-        const spots = cells.map((c) => `${c.dc},${c.dr}`);
-        expect(new Set(spots).size).toBe(spots.length);
-      }
+      const label = JSON.stringify(design);
+      const { geometry, nozzles } = shipModel(design);
+      const box = geometry.boundingBox!;
+      expect(box.max.z - box.min.z, label).toBeCloseTo(1, 5);
+      expect(Math.max(-box.min.x, box.max.x), label).toBeLessThan(0.8);
+      expect(Math.max(-box.min.y, box.max.y), label).toBeLessThan(0.5);
+      const pos = geometry.getAttribute('position');
+      // the front is the nose, on the centre line (a point, or a blunt face centred on it)
+      let zMin = Infinity;
+      for (let i = 0; i < pos.count; i++) zMin = Math.min(zMin, pos.getZ(i));
+      expect(zMin, label).toBeCloseTo(-0.5, 5);
+      const front = [...Array(pos.count).keys()].filter((i) => pos.getZ(i) < zMin + 1e-4);
+      const meanX = front.reduce((sum, i) => sum + pos.getX(i), 0) / front.length;
+      expect(Math.abs(meanX), label).toBeLessThan(0.02);
+      // hull, trim, glow, in that order, covering every vertex
+      expect(geometry.groups.map((g) => g.materialIndex)).toEqual([
+        PART_HULL,
+        PART_TRIM,
+        PART_GLOW,
+      ]);
+      for (const g of geometry.groups) expect(g.count, label).toBeGreaterThan(0);
+      expect(geometry.groups.reduce((n, g) => n + g.count, 0)).toBe(pos.count);
+      expect(pos.count / 3, label).toBeLessThan(2000);
+      expect(geometry.getAttribute('normal').count).toBe(pos.count);
+      expect(geometry.getAttribute('aPart').count).toBe(pos.count);
+      // the engine's nozzles are at the back, where the exhaust comes out
+      expect(nozzles.length).toBeGreaterThan(0);
+      for (const n of nozzles) expect(n.pos[2], label).toBeGreaterThan(0);
     }
   });
 
-  it('puts the exhaust behind the ship, never on it', () => {
-    for (const design of ALL) {
-      const v = composeShip(design);
-      for (let dir = 0; dir < 8; dir++) {
-        const ship = new Set(v.side[dir].map((c) => `${c.dc},${c.dr}`));
-        for (const [dc, dr] of v.exhaustSide[dir]) expect(ship.has(`${dc},${dr}`)).toBe(false);
-      }
-      const rear = new Set(v.rear.map((c) => `${c.dc},${c.dr}`));
-      for (const [dc, dr] of v.exhaustRear) expect(rear.has(`${dc},${dr}`)).toBe(false);
+  it('has outward-facing normals: on the top surface they point up', () => {
+    const { geometry } = shipModel(DEFAULT_SHIP);
+    const pos = geometry.getAttribute('position');
+    const nrm = geometry.getAttribute('normal');
+    let top = 0;
+    for (let i = 1; i < pos.count; i++) if (pos.getY(i) > pos.getY(top)) top = i;
+    expect(nrm.getY(top)).toBeGreaterThan(0);
+  });
+
+  it('caches meshes by parts only, not by colour or name', () => {
+    const red: ShipDesign = { ...DEFAULT_SHIP, color: 'red', name: 'OTHER' };
+    expect(shipModel(DEFAULT_SHIP)).toBe(shipModel(red));
+    expect(shipModel(DEFAULT_SHIP)).not.toBe(shipModel({ ...DEFAULT_SHIP, hull: 'saucer' }));
+    expect(exhaustGeometry(shipModel(DEFAULT_SHIP))).toBe(exhaustGeometry(shipModel(red)));
+  });
+
+  it('labels every part for the hangar', () => {
+    for (const h of HULLS) expect(HULL_LABELS[h]).toBe(h.toUpperCase());
+    for (const w of WINGS) expect(WING_LABELS[w]).toBe(w.toUpperCase());
+    for (const e of ENGINES) expect(ENGINE_LABELS[e]).toBe(e.toUpperCase());
+  });
+});
+
+describe('ship palette rows', () => {
+  it('builds the hull ramp from the swatch: black, the swatch in light, a pale highlight', () => {
+    for (const s of TEXT_SWATCHES) {
+      const ramp = hullRamp(s.id);
+      expect(ramp.stops[0]).toEqual([0, '#000000']);
+      expect(ramp.stops.map(([, hex]) => hex.toUpperCase())).toContain(s.hex.toUpperCase());
+      const lums = ramp.stops.map(([, hex]) => luminance(hexToRgb(hex)));
+      for (let i = 1; i < lums.length; i++) expect(lums[i]).toBeGreaterThanOrEqual(lums[i - 1]);
+      const lit = sampleRamp(ramp, 0.75);
+      hexToRgb(s.hex).forEach((c, k) => expect(lit[k]).toBeCloseTo(c, 6));
     }
+    expect(glowRamp('cyan').stops.at(-1)).toEqual([1, '#FFFFFF']);
   });
 
-  it('maps ship axes to screen cells', () => {
-    expect(axisToCell(0, 1, 0)).toEqual([1, 0]); // nose, flying right
-    expect(axisToCell(0, 0, 1)).toEqual([0, -1]); // left is up
-    expect(axisToCell(2, 1, 0)).toEqual([0, -1]); // flying up
-    expect(axisToCell(1, -1, 1)).toEqual([-1, 0]);
-    expect(axisToCell(1, -1, -1)).toEqual([0, 1]);
-  });
-
-  it('remembers composed ships', () => {
-    const red: ShipDesign = { ...DEFAULT_SHIP, color: 'red' };
-    expect(shipViews(DEFAULT_SHIP)).toBe(shipViews(red));
+  it('is in every open-world scene, after its own materials, hull first', () => {
+    for (const scene of [worldGalaxyScene, worldSystemScene, blackHoleScene]) {
+      const ids = scene.materials.map((m) => m.id);
+      expect(ids.slice(-3)).toEqual([SHIP_HULL, SHIP_TRIM, SHIP_GLOW]);
+    }
+    expect(SHIP_MATERIALS[0].ramp).toEqual(hullRamp(DEFAULT_SHIP.color));
   });
 });
 

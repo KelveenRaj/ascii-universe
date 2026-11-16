@@ -257,7 +257,13 @@ test.describe('open world', () => {
     await page.getByRole('button', { name: 'HANGAR' }).click();
     const hangar = page.getByTestId('hangar');
     await expect(hangar).toBeVisible();
-    await expect(page.getByTestId('ship-preview')).toBeVisible();
+    // a showroom, not a modal: a side panel beside your real ship, the flight parked behind it
+    const panel = page.getByRole('dialog', { name: 'HANGAR' });
+    await expect(panel).toBeVisible();
+    await expect(page.getByTestId('ship-preview')).toHaveCount(0);
+    const box = await panel.boundingBox();
+    expect(box!.x).toBeGreaterThan(1280 / 2); // down the right, leaving the ship in view
+    await expect(page.getByTestId('flight-panel')).toContainText('THROTTLE0%');
 
     await page.getByTitle('Next hull').click();
     await expect(page.getByTestId('pick-hull')).toHaveText('ARROW');

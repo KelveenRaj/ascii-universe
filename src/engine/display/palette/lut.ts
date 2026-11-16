@@ -104,3 +104,10 @@ export function updatePaletteTexture(tex: THREE.DataTexture, ramps: readonly Ram
   }
   tex.needsUpdate = true;
 }
+
+/** Rewrites one row (one material's ramp) in place; the row count stays the same. */
+export function updatePaletteRow(tex: THREE.DataTexture, row: number, ramp: Ramp): void {
+  if (row < 0 || row >= tex.image.height) return;
+  (tex.image.data as Uint8Array).set(buildLut(ramp), row * LUT_SIZE * 4);
+  tex.needsUpdate = true;
+}
