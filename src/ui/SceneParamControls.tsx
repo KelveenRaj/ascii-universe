@@ -1,16 +1,26 @@
 import { useStore } from 'zustand';
-import type { Param } from '@/engine/scene/params';
+import type { Param, ParamValue } from '@/engine/scene/params';
 import type { SceneModule } from '@/engine/scene/SceneModule';
 import { sceneParamsStore } from '@/state/sceneParams';
-import { Slider, Toggle } from '@/ui/controls';
+import { Select, Slider, Toggle } from '@/ui/controls';
 
 function ParamControl(props: { sceneId: string; name: string; param: Param }) {
   const { sceneId, name, param } = props;
   const value = useStore(sceneParamsStore, (s) => s.values[sceneId]?.[name] ?? param.default);
-  const set = (v: number | boolean) => sceneParamsStore.getState().set(sceneId, name, v);
+  const set = (v: ParamValue) => sceneParamsStore.getState().set(sceneId, name, v);
 
   if (param.kind === 'boolean') {
     return <Toggle label={param.label} checked={value === true} onChange={set} />;
+  }
+  if (param.kind === 'choice') {
+    return (
+      <Select
+        label={param.label}
+        value={typeof value === 'string' ? value : param.default}
+        options={param.options}
+        onChange={set}
+      />
+    );
   }
   return (
     <Slider

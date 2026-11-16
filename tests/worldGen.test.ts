@@ -79,6 +79,20 @@ describe('procedural sectors', () => {
     expect(findSystem(`${s.id.slice(0, -1)}99`)).toBeNull();
   });
 
+  it('still resolves generator 1 ids saved before the galaxy was rebuilt', () => {
+    const old = sectorSystems([2, 0, 541], 1)[0] ?? sectorSystems([3, 0, 541], 1)[0];
+    expect(old.id.startsWith('g1:')).toBe(true);
+    expect(findSystem(old.id)).toEqual(old);
+    expect(sectorSystems([2, 0, 541])[0]?.id.startsWith('g2:') ?? true).toBe(true);
+  });
+
+  it('snapshot: generator 1 is frozen', () => {
+    const summary = [-1, 0, 1].flatMap((dx) =>
+      sectorSystems([dx, 0, 540], 1).map((s) => `${s.id} ${s.name} ${s.starClass} ${s.planets}`),
+    );
+    expect(summary).toMatchSnapshot();
+  });
+
   it('has sensible names', () => {
     for (const s of new SectorCache().around(SUN_POS, 1)) {
       expect(s.name).toMatch(/^[A-Z][A-Z' -]{1,15}$/);

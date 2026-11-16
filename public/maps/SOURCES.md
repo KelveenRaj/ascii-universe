@@ -4,16 +4,16 @@ These are small, processed versions of public spacecraft maps, made by `scripts/
 (see the top of that file for the channel layout). Each is equirectangular, longitude −180°…180°
 east from left to right, north at the top.
 
-| Map | Source | Credit |
-| --- | --- | --- |
-| `earth.png` (surface) | [Blue Marble Next Generation with topography, January 2004](https://assets.science.nasa.gov/content/dam/science/esd/eo/images/bmng/bmng-topography/january/world.topo.200401.3x5400x2700.jpg) | NASA Earth Observatory, Reto Stöckli |
-| `earth.png` (clouds) | [Blue Marble cloud composite](https://assets.science.nasa.gov/content/dam/science/esd/eo/content-feature/bluemarble/images/cloud_combined_2048.jpg) | NASA Earth Observatory |
-| `earth.png` (city lights) | [Black Marble 2016, greyscale](https://assets.science.nasa.gov/content/dam/science/esd/eo/images/imagerecords/144000/144897/BlackMarble_2016_01deg_gray.jpg) | NASA Earth Observatory, Joshua Stevens, using Suomi NPP VIIRS data from Miguel Román, NASA GSFC |
-| `moon.png` | [LROC colour map, CGI Moon Kit](https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_2k.jpg) | NASA's Scientific Visualization Studio; LRO/LROC team |
-| `mars.png` | [Viking MDIM 2.1 colour mosaic](https://commons.wikimedia.org/wiki/File:Mars_Viking_MDIM21_ClrMosaic_1km.jpg) | NASA/JPL/USGS Astrogeology |
-| `mercury.png` | [MESSENGER global monochrome basemap, 2500 m/px](https://commons.wikimedia.org/wiki/File:Mercury_-_complete_mono_basemap_2500mpp_equirectangular.png) | NASA/Johns Hopkins University Applied Physics Laboratory/Carnegie Institution of Washington |
-| `jupiter.png` | [Cassini cylindrical map of Jupiter, PIA07782](https://assets.science.nasa.gov/content/dam/science/psd/photojournal/pia/pia07/pia07782/PIA07782.jpg) | NASA/JPL/Space Science Institute |
-| `saturn.png` | [Cassini "True Saturn", PIA06193](http://svs.gsfc.nasa.gov/vis/a030000/a030300/a030348/saturn_full_disk_PIA06193_print.jpg) | NASA/JPL/Space Science Institute |
+| Map                       | Source                                                                                                                                                                                        | Credit                                                                                          |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `earth.png` (surface)     | [Blue Marble Next Generation with topography, January 2004](https://assets.science.nasa.gov/content/dam/science/esd/eo/images/bmng/bmng-topography/january/world.topo.200401.3x5400x2700.jpg) | NASA Earth Observatory, Reto Stöckli                                                            |
+| `earth.png` (clouds)      | [Blue Marble cloud composite](https://assets.science.nasa.gov/content/dam/science/esd/eo/content-feature/bluemarble/images/cloud_combined_2048.jpg)                                           | NASA Earth Observatory                                                                          |
+| `earth.png` (city lights) | [Black Marble 2016, greyscale](https://assets.science.nasa.gov/content/dam/science/esd/eo/images/imagerecords/144000/144897/BlackMarble_2016_01deg_gray.jpg)                                  | NASA Earth Observatory, Joshua Stevens, using Suomi NPP VIIRS data from Miguel Román, NASA GSFC |
+| `moon.png`                | [LROC colour map, CGI Moon Kit](https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_2k.jpg)                                                                                      | NASA's Scientific Visualization Studio; LRO/LROC team                                           |
+| `mars.png`                | [Viking MDIM 2.1 colour mosaic](https://commons.wikimedia.org/wiki/File:Mars_Viking_MDIM21_ClrMosaic_1km.jpg)                                                                                 | NASA/JPL/USGS Astrogeology                                                                      |
+| `mercury.png`             | [MESSENGER global monochrome basemap, 2500 m/px](https://commons.wikimedia.org/wiki/File:Mercury_-_complete_mono_basemap_2500mpp_equirectangular.png)                                         | NASA/Johns Hopkins University Applied Physics Laboratory/Carnegie Institution of Washington     |
+| `jupiter.png`             | [Cassini cylindrical map of Jupiter, PIA07782](https://assets.science.nasa.gov/content/dam/science/psd/photojournal/pia/pia07/pia07782/PIA07782.jpg)                                          | NASA/JPL/Space Science Institute                                                                |
+| `saturn.png`              | [Cassini "True Saturn", PIA06193](http://svs.gsfc.nasa.gov/vis/a030000/a030300/a030348/saturn_full_disk_PIA06193_print.jpg)                                                                   | NASA/JPL/Space Science Institute                                                                |
 
 All are works of NASA (or NASA with USGS) and in the public domain in the United States; NASA asks
 for the credit above.

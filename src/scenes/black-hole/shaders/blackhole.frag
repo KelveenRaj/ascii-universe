@@ -5,12 +5,16 @@
 // Schwarzschild photon orbit equation u'' + u = 1.5 u² exactly, so the lensing is not approximate.
 //
 // Output (half-float):
-//   R = disk intensity (HDR, linear)
+//   R = intensity of the accretion flow (HDR, linear)
 //   G = star intensity behind the disk, or -1 if the ray fell into the hole (lets later passes tell
 //       the pure-black shadow apart from the near-black sky)
 //   B = material: 0 (the EHT disk, see materials.ts); the sky uses the scene sky colours
-//   A = g-factor of the first disk crossing (0 if none) in the redshift debug view, otherwise the
-//       fraction of the step budget used (steps debug heatmap)
+//   A = in the redshift debug view, g of the first thin-disk crossing, or the brightness-weighted
+//       mean g along the ray for the RIAF (0 if none); otherwise the fraction of the step budget
+//       used (steps debug heatmap)
+//
+// Two flow models (uFlow): 0 = thick, optically thin RIAF emitting along the whole ray (see
+// disk.glsl), 1 = infinitely thin disk composited at up to three plane crossings.
 precision highp float;
 precision highp int;
 
@@ -26,6 +30,9 @@ uniform float uDiskOuter;
 uniform float uBeaming;
 uniform float uStarDensity;
 uniform bool uRedshiftView; // the "redshift" debug view is on: write g into A
+uniform int uFlow; // 0 = RIAF, 1 = thin disk
+uniform bool uHotspot;
+uniform float uThickness; // RIAF H / ρ
 
 in vec2 vUv;
 out vec4 fragColor;
@@ -35,6 +42,8 @@ out vec4 fragColor;
 #include disk.glsl;
 
 const int MAX_STEPS_CAP = 1024;
+// Overall RIAF brightness, so its ring peaks near the thin disk's brightness in the display.
+const float RIAF_GAIN = 3.0;
 
 // Spatial step length. Must match stepLength() in src/scenes/black-hole/geodesic.ts.
 float stepLength(float r) {
@@ -50,6 +59,12 @@ void main() {
   vec3 hv = cross(pos, vel);
   float h2 = dot(hv, hv);
   float rEscape = max(30.0, 2.0 * uDiskOuter);
+  bool riaf = uFlow == 0;
+  // photon angular momentum about the flow's spin axis (-y), per unit energy: the photon runs
+  // opposite to the traced ray, and x × v is conserved by the central-force march
+  float lz = hv.y;
+  float gSum = 0.0;
+  float wSum = 0.0;
 
   float diskI = 0.0;
   float opacity = 0.0;
@@ -74,8 +89,20 @@ void main() {
     float r2 = length(pos);
     vel += 0.5 * dt * (-1.5 * h2 * pos / (r2 * r2 * r2 * r2 * r2));
 
-    // crossed the disk plane during this step?
-    if (prev.y * pos.y < 0.0 && crossings < 3) {
+    if (riaf) {
+      // optically thin emission, sampled on the step the march just took
+      if (r2 < uDiskOuter && r2 > 1.0) {
+        float j = riafEmissivity(pos, r2, uTime, uThickness, uDiskOuter, uHotspot);
+        if (j > 0.0) {
+          float g = flowG(pos, r2, lz, h2, dot(pos, vel) < 0.0);
+          float w = j * stepLength(r) * pow(g, uBeaming);
+          diskI += w;
+          gSum += w * g;
+          wSum += w;
+        }
+      }
+    } else if (prev.y * pos.y < 0.0 && crossings < 3) {
+      // crossed the thin disk's plane during this step
       vec3 hit = mix(prev, pos, prev.y / (prev.y - pos.y));
       float rh = length(hit.xz);
       if (rh > uDiskInner * 0.98 && rh < uDiskOuter) {
@@ -113,6 +140,10 @@ void main() {
   }
 
   const float MATERIAL_DISK = 0.0;
+  if (riaf) {
+    diskI *= RIAF_GAIN;
+    firstG = wSum > 0.0 ? gSum / wSum : 0.0;
+  }
   float debugValue = uRedshiftView ? firstG : float(steps) / float(uMaxSteps);
   fragColor = vec4(diskI, sky, MATERIAL_DISK, debugValue);
 }

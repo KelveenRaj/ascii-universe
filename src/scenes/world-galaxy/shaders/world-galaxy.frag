@@ -33,11 +33,7 @@ uniform vec2 uNearInfo[NEAR_MAX];
 uniform int uNearCount;
 uniform float uStarGain;
 
-// layout (kly, radians); keep in sync with src/scenes/milky-way/layout.ts
-uniform float uDiskRadius;
-uniform float uBarHalfLength;
-uniform float uBarAngle;
-uniform float uPitch;
+// the layout constants (G_*) are inserted after the precision lines by withGalaxyLayout (layout.ts)
 
 in vec2 vUv;
 out vec4 fragColor;
@@ -60,7 +56,7 @@ void main() {
   vec3 rd = normalize(uCamBasis * vec3(ndc.x * uAspect * uTanHalfFov, ndc.y * uTanHalfFov, -1.0));
   vec3 ro = uCamPos;
 
-  // clip the ray to the galaxy's bounding cylinder: |y| < SLAB, radius < uDiskRadius
+  // clip the ray to the galaxy's bounding cylinder: |y| < SLAB, radius < G_DISK_RADIUS
   float t0 = 0.0;
   float t1 = 1e6;
   if (abs(rd.y) > 1e-5) {
@@ -75,7 +71,7 @@ void main() {
   vec2 d = rd.xz;
   float a = dot(d, d);
   float b = dot(o, d);
-  float c = dot(o, o) - uDiskRadius * uDiskRadius;
+  float c = dot(o, o) - G_DISK_RADIUS * G_DISK_RADIUS;
   float disc = b * b - a * c;
   if (a < 1e-10) {
     if (c > 0.0) t1 = -1.0;
