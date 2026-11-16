@@ -29,6 +29,21 @@ describe('param schema helpers', () => {
     expect(sanitizeParam(SCHEMA.grid, 1)).toBeUndefined();
   });
 
+  it('accepts only listed choices', () => {
+    const flow = {
+      kind: 'choice',
+      label: 'FLOW',
+      default: 'a',
+      options: [
+        { value: 'a', label: 'A' },
+        { value: 'b', label: 'B' },
+      ],
+    } as const;
+    expect(sanitizeParam(flow, 'b')).toBe('b');
+    expect(sanitizeParam(flow, 'c')).toBeUndefined();
+    expect(sanitizeParam(flow, 1)).toBeUndefined();
+  });
+
   it('fills a full value object from garbage, keeping what validates', () => {
     expect(sanitizeParams(SCHEMA, null)).toEqual({ speed: 2, grid: false });
     expect(sanitizeParams(SCHEMA, { speed: 4, grid: 'yes', other: 1 })).toEqual({
