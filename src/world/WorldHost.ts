@@ -16,7 +16,14 @@ import { SpaceDust } from '@/world/flight/SpaceDust';
 import { findInterior } from '@/world/gen/planets';
 import { findSystem } from '@/world/gen/sector';
 import { findLandmark } from '@/world/landmarks';
-import { BlackHoleLayer, blocked, keepOut, SystemLayer, type InnerLayer } from '@/world/layers';
+import {
+  BlackHoleLayer,
+  blocked,
+  keepOut,
+  SolarLayer,
+  SystemLayer,
+  type InnerLayer,
+} from '@/world/layers';
 import type { WorldLocation } from '@/world/location';
 import {
   add,
@@ -85,6 +92,7 @@ const SHOWROOM_SPIN = 0.3;
 const SHOWROOM_RISE = 0.32;
 
 const isSgr = (t: Target) => t.id === 'sgr-a-star';
+const isSol = (t: Target) => t.id === 'sol';
 const standOff = (t: Target) => (isSgr(t) ? STAND_OFF_SGR : STAND_OFF);
 
 type Jump =
@@ -117,6 +125,8 @@ function placeTarget(id: string): Target | null {
 /** The inside of a place you can enter, or null. */
 function layerFor(place: Target): InnerLayer | null {
   if (isSgr(place)) return new BlackHoleLayer(place);
+  // our own system is the real one, not a generated look-alike
+  if (isSol(place)) return new SolarLayer(place);
   const interior = findInterior(place.id);
   return interior ? new SystemLayer(place, interior) : null;
 }
@@ -245,6 +255,14 @@ export class WorldHost {
     // already inside: no "discovered" fanfare, it was found last time
     this.visiting.add(place.id);
     this.setLayer(layer, `RESUMING AT ${place.name}`);
+    // a save from before the layer's units changed (Sol used to be a game system) lands outside
+    // it: arrive from that side instead of being thrown straight back out
+    if (layer.outside(loc.pos)) {
+      const spawn = layer.spawn(length(loc.pos) > 1e-9 ? normalize(loc.pos) : [0, 0, 1]);
+      flight.pos = spawn.pos;
+      flight.orient = spawn.orient;
+      return;
+    }
     flight.pos = loc.pos;
     flight.orient = quatLookAt(normalize(scale(loc.pos, -1)), [0, 1, 0]);
   }
@@ -355,9 +373,16 @@ export class WorldHost {
     const step = frozen ? 0 : dt;
     if (!frozen) this.handleRequests(flight);
     const before = flight.pos;
+    const inner = this.inner;
+    if (inner) {
+      // layers with a clock or a scale that follows the ship (Sol) update before it flies
+      inner.tick?.(step);
+      inner.adapt?.(flight.pos);
+      this.dust.setRadius(inner.dustRadius);
+    }
     if (this.jump) this.stepJump(flight, step);
     else flight.step(step, this.input.controls());
-    if (this.inner) keepOut(flight, this.inner.occluders());
+    if (inner) keepOut(flight, inner.occluders(), inner.keepOutMargin);
     // distance is only counted in open space (each inner layer has its own units)
     const moved = this.inner ? 0 : distance(before, flight.pos);
     this.dust.update(step, flight.vel);
@@ -770,6 +795,7 @@ export class WorldHost {
 
   private targetRadius(t: Target): number {
     const inner = this.inner;
+    if (inner instanceof SolarLayer) return inner.radiusOf(t.id);
     if (!(inner instanceof SystemLayer)) return 0;
     return inner.interior.planets.find((p) => p.id === t.id)?.radius ?? 0;
   }
@@ -782,7 +808,7 @@ export class WorldHost {
     if (inner) {
       const shown = speed < 0.05 ? '0' : speed.toFixed(speed < 10 ? 1 : 0);
       rows = [
-        ['SPEED', `${shown} ${inner.speedUnit}`],
+        ['SPEED', inner.formatSpeed?.(speed) ?? `${shown} ${inner.speedUnit}`],
         ['THROTTLE', throttle],
         ...inner.hudRows(flight.pos),
       ];

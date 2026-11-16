@@ -14,7 +14,7 @@ export class SpaceDust {
   /** Positions relative to the ship. */
   readonly specks: Vec3d[] = [];
   private readonly rng: Rng;
-  private readonly radius: number;
+  private radius: number;
   private readonly world = new THREE.Vector3();
   private readonly behind = new THREE.Vector3();
 
@@ -30,6 +30,14 @@ export class SpaceDust {
       const p: Vec3d = [this.rng() * 2 - 1, this.rng() * 2 - 1, this.rng() * 2 - 1];
       if (length(p) <= 1) return scale(p, this.radius);
     }
+  }
+
+  /** Resizes the cloud (a layer whose scale follows the ship's altitude), keeping its shape. */
+  setRadius(radius: number): void {
+    if (radius === this.radius || !(radius > 0)) return;
+    const k = radius / this.radius;
+    for (let i = 0; i < this.specks.length; i++) this.specks[i] = scale(this.specks[i], k);
+    this.radius = radius;
   }
 
   /** Moves the specks past a ship flying at `velocity`. */
