@@ -75,6 +75,8 @@ export class CameraController {
 
   private tanHalfFov: number;
   private idleTime = 0;
+  /** Easing over to a new orbit centre after focusOn(). */
+  private travelling = false;
   private readonly q = new THREE.Quaternion();
   private readonly qTmp = new THREE.Quaternion();
   private readonly vTmp = new THREE.Vector3();
@@ -215,6 +217,7 @@ export class CameraController {
 
   /** Eases to a view of the origin (shortest way round), re-centred and level. */
   setView(view: CameraView, instant = false): void {
+    this.travelling = false;
     this.goal.yaw = this.current.yaw + wrapAngle(view.yaw * DEG - this.current.yaw);
     this.goal.elevation = view.elevation * DEG;
     this.goal.distance = view.distance;
@@ -222,6 +225,24 @@ export class CameraController {
     this.goal.target.set(0, 0, 0);
     this.notifyInput();
     if (instant) this.snap();
+  }
+
+  /**
+   * Eases to a view around `target` instead of the origin (going to a body in a scene with several),
+   * with a closer limit for that body.
+   */
+  focusOn(target: THREE.Vector3, view: CameraView, minDistance: number, instant = false): void {
+    this._limits = { ...this._limits, minDistance };
+    this.setView(view, instant);
+    this.goal.target.copy(target);
+    if (instant) this.current.target.copy(target);
+    else this.travelling = true;
+  }
+
+  /** Moves the orbit centre along with a moving body (current and goal alike, so no lag). */
+  follow(delta: THREE.Vector3): void {
+    this.current.target.add(delta);
+    this.goal.target.add(delta);
   }
 
   /**
@@ -272,6 +293,13 @@ export class CameraController {
     // ease distance in log space so zooming feels even at every scale
     c.distance = Math.exp(Math.log(c.distance) + (Math.log(g.distance) - Math.log(c.distance)) * k);
     c.target.lerp(g.target, k);
+    if (this.travelling) {
+      // flying to another body: stay far enough back that it stays in view on the way, rather
+      // than zooming in on empty space before the orbit centre has got there
+      const left = c.target.distanceTo(g.target);
+      c.distance = Math.max(c.distance, Math.min(left * 3, this._limits.maxDistance));
+      if (left < c.distance * 1e-3) this.travelling = false;
+    }
   }
 
   /** Orientation quaternion for a pose. */

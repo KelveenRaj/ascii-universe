@@ -7,7 +7,8 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default defineConfig([
-  globalIgnores(['dist', 'coverage']),
+  // .claude/ holds other sessions' worktrees (local only)
+  globalIgnores(['dist', 'coverage', '.claude']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

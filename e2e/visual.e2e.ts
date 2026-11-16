@@ -77,6 +77,16 @@ const VIEWS: Array<{
     place: 'world',
   },
   { name: 'world-sgr-a-star', query: 'wplace=sgr-a-star&wpos=0,5,48&wpitch=-4', place: 'world' },
+  // the Solar System on a fixed date
+  {
+    name: 'solar-overview',
+    query: 'date=2026-01-01&crt=0',
+    settings: { labels: true },
+    place: 'solar-system',
+  },
+  { name: 'solar-earth', query: 'date=2026-01-01&crt=0', place: 'earth' },
+  { name: 'solar-jupiter', query: 'date=2026-01-01&crt=0', place: 'jupiter' },
+  { name: 'solar-saturn', query: 'date=2026-01-01&crt=0', place: 'saturn' },
 ];
 
 for (const view of VIEWS) {

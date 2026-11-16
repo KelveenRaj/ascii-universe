@@ -10,7 +10,7 @@ import type { SceneId } from '@/scenes/registry';
  * - numbers that are derived rather than quoted say so in `detail`
  */
 
-export type BodyKind = 'black-hole' | 'galaxy' | 'star' | 'planet' | 'moon' | 'nebula';
+export type BodyKind = 'black-hole' | 'galaxy' | 'system' | 'star' | 'planet' | 'moon' | 'nebula';
 
 export interface Source {
   /** Short id facts point at, unique within the body. */
@@ -56,6 +56,7 @@ export interface Body {
 export const KIND_LABELS: Record<BodyKind, string> = {
   'black-hole': 'BLACK HOLE',
   galaxy: 'GALAXY',
+  system: 'PLANETARY SYSTEM',
   star: 'STAR',
   planet: 'PLANET',
   moon: 'MOON',

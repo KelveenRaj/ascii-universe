@@ -77,12 +77,12 @@ export class GalaxyPass implements SceneInstance<MilkyWayParams> {
     this.pass.render(renderer, target);
   }
 
-  /** Sgr A* at the centre (click it to warp there) and the Sun, which turns with the galaxy. */
+  /** Sgr A* at the centre and the Sun, which turns with the galaxy (click either to warp there). */
   labels(): SceneLabel[] {
     galaxyToWorld(GALAXY.sunRadius, GALAXY.sunAngle, this.turned, this.sun);
     return [
       { position: this.centre, text: 'SGR A*', radius: 2.5, target: 'sgr-a-star' },
-      { position: this.sun, text: 'SUN', radius: 1, style: 'normal' },
+      { position: this.sun, text: 'SUN', radius: 1, style: 'normal', target: 'solar-system' },
     ];
   }
 

@@ -1,9 +1,10 @@
 import { milkyWay } from '@/content/bodies/milky-way';
 import { sgrAStar } from '@/content/bodies/sgr-a-star';
+import { SOLAR_SYSTEM_BODIES } from '@/content/bodies/solar-system';
 import type { Body } from '@/content/schema';
 
 /** Every body with an info card. Order is the order lists show them in. */
-export const BODIES: readonly Body[] = [milkyWay, sgrAStar];
+export const BODIES: readonly Body[] = [milkyWay, sgrAStar, ...SOLAR_SYSTEM_BODIES];
 
 /** Where you start: the hub. */
 export const DEFAULT_BODY_ID = milkyWay.id;
