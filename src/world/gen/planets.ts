@@ -1,4 +1,4 @@
-import { findSystem, GEN, type StarClass, type StarSystem } from '@/world/gen/sector';
+import { findSystem, type StarClass, type StarSystem } from '@/world/gen/sector';
 import { findLandmark, type Landmark } from '@/world/landmarks';
 import { parseSystemId } from '@/world/location';
 import type { Vec3d } from '@/world/math';
@@ -9,7 +9,7 @@ import { hashInts, hashString, mulberry32, pick, type Rng } from '@/world/rng';
  * orbits with inflated sizes, so a whole system fits in a minute of flying and every planet is
  * worth a look. Planets hold still (no orbital motion), so they're where you left them.
  *
- * Generated from the system's id alone (version GEN, like the systems themselves); Sol is built
+ * Generated from the system's id alone (with the generator version in the id, like the systems themselves); Sol is built
  * by hand.
  */
 
@@ -155,7 +155,7 @@ const edgeFor = (starRadius: number, planets: readonly Planet[]) =>
 export function systemInterior(system: StarSystem): SystemInterior {
   const parsed = parseSystemId(system.id);
   const seed = parsed
-    ? hashInts(GEN, parsed.sector[0], parsed.sector[1], parsed.sector[2], parsed.index, 31)
+    ? hashInts(parsed.gen, parsed.sector[0], parsed.sector[1], parsed.sector[2], parsed.index, 31)
     : hashString(system.id);
   const look = STAR_LOOK[system.material] ?? SYSTEM_MATERIAL.starSun;
   return generate(
