@@ -1,5 +1,5 @@
 import type * as THREE from 'three';
-import type { CameraSetup } from '@/engine/camera/CameraController';
+import type { CameraSetup, CameraView } from '@/engine/camera/CameraController';
 import type { SceneLayout } from '@/engine/display/DisplayPipeline';
 import type { SceneLabel } from '@/engine/display/labels';
 import type { Material, Sky } from '@/engine/display/palette/palettes';
@@ -96,9 +96,25 @@ export interface WorldFrame {
   system?: { star: SystemBody; planets: readonly SystemBody[] };
 }
 
+/** Where the camera should be for a body inside a scene with several (see SceneInstance.focus). */
+export interface SceneFocus {
+  /** The body's position now, in scene units. The camera keeps following it. */
+  target: THREE.Vector3;
+  /** The view to ease to when you go to it (angles in degrees, around the target). */
+  view: CameraView;
+  /** Closest the camera may come to the target. */
+  minDistance: number;
+}
+
 export interface SceneInstance<P = Record<string, ParamValue>> {
   /** Called whenever the display re-lays out the scene buffer (resize, grid change…). */
   setLayout(layout: SceneLayout): void;
+  /**
+   * For scenes holding several bodies you can go to (the Solar System): where the camera goes for
+   * `bodyId`, or null if the scene doesn't do this. Asked every frame before render(), for the
+   * same moment render() then draws, so a fast-moving body stays put on screen.
+   */
+  focus?(bodyId: string, params: P): SceneFocus | null;
   render(frame: SceneFrame<P>): void;
   /** Name tags drawn in the character grid (ASCII mode, when labels are on). */
   labels?(): SceneLabel[];

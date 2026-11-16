@@ -69,6 +69,10 @@ export class Engine {
   private readonly gameView: GameView;
   /** The running game placed the camera itself last frame. */
   private gameCameraFixed = false;
+  /** The body the camera was last sent to inside a scene with several (SceneInstance.focus). */
+  private focusId: string | null = null;
+  private readonly focusAt = new THREE.Vector3();
+  private readonly focusDelta = new THREE.Vector3();
 
   private disposed = false;
   private contextLost = false;
@@ -102,6 +106,7 @@ export class Engine {
     this.scene = module.create({ tanHalfFov });
     this.controller = new CameraController(tanHalfFov, module.camera);
     this.controller.attractEnabled = settings.attractMode;
+    this.followFocus(true);
     this.input = new InputManager(canvas, this.controller);
     this.gameView = { camera: this.camera, tanHalfFov, aspect: 16 / 9 };
     this.games = new GameHost(
@@ -115,6 +120,8 @@ export class Engine {
       onCommand((cmd) => {
         if (cmd.type === 'preset') this.controller.setPreset(cmd.preset);
         else if (cmd.type === 'resetView') this.controller.reset();
+        // a scene that follows bodies goes back to the body's own view instead of the origin
+        if (cmd.type === 'preset' || cmd.type === 'resetView') this.focusId = null;
         else if (cmd.type === 'captureText') this.captureText();
         else if (cmd.type === 'gameAction') this.games.input.tap(cmd.action);
       }),
@@ -299,6 +306,10 @@ export class Engine {
     this.display.setScene(module, settingsStore.getState());
     this.scene = module.create({ tanHalfFov: this.tanHalfFov });
     this.controller.setSetup(module.camera, ARRIVE_FROM);
+    this.focusId = null;
+    if (this.followFocus(true)) {
+      this.controller.current.distance = this.controller.goal.distance * ARRIVE_FROM;
+    }
     this.labelHits = [];
     this.resize(); // gives the new scene its layout
   }
@@ -316,6 +327,27 @@ export class Engine {
       this.warp = null;
       this.display.fade = 1;
     }
+  }
+
+  /**
+   * In a scene with several bodies (the Solar System): sends the camera to the body navigation
+   * points at when that changes, and keeps it riding along with the body as it moves. Returns
+   * whether the scene does this.
+   */
+  private followFocus(instant: boolean): boolean {
+    if (!this.scene.focus) return false;
+    const bodyId = navigationStore.getState().bodyId;
+    const params = sceneParamsStore.getState().values[this.sceneId];
+    const focus = this.scene.focus(bodyId, params);
+    if (!focus) return false;
+    if (bodyId !== this.focusId) {
+      this.focusId = bodyId;
+      this.controller.focusOn(focus.target, focus.view, focus.minDistance, instant);
+    } else {
+      this.controller.follow(this.focusDelta.subVectors(focus.target, this.focusAt));
+    }
+    this.focusAt.copy(focus.target);
+    return true;
   }
 
   private get autoTier() {
@@ -402,6 +434,7 @@ export class Engine {
       this.games.update(dt, this.gameView);
       this.applyGameCamera();
     } else {
+      this.followFocus(false);
       this.controller.apply(this.camera);
     }
 

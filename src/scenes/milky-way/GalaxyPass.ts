@@ -3,7 +3,7 @@ import type { SceneLayout } from '@/engine/display/DisplayPipeline';
 import type { SceneLabel } from '@/engine/display/labels';
 import { FullscreenPass } from '@/engine/FullscreenPass';
 import type { SceneFrame, SceneInstance } from '@/engine/scene/SceneModule';
-import { GALAXY, galaxyToWorld } from '@/scenes/milky-way/layout';
+import { armLabelPoints, GALAXY, galaxyToWorld, withGalaxyLayout } from '@/scenes/milky-way/layout';
 import { MILKY_WAY_PARAMS, type MilkyWayParams } from '@/scenes/milky-way/params';
 import galaxyFrag from '@/scenes/milky-way/shaders/galaxy.frag';
 
@@ -25,18 +25,20 @@ export class GalaxyPass implements SceneInstance<MilkyWayParams> {
     uArmContrast: U<number>;
     uDust: U<number>;
     uRedshiftView: U<boolean>;
-    uDiskRadius: U<number>;
-    uBarHalfLength: U<number>;
-    uBarAngle: U<number>;
-    uPitch: U<number>;
   }>;
   /** Radians the galaxy has turned. */
   private turned = 0;
   private readonly sun = new THREE.Vector3();
   private readonly centre = new THREE.Vector3();
+  private readonly armLabels = armLabelPoints().map((a) => ({
+    ...a,
+    position: new THREE.Vector3(),
+  }));
+  /** sin of the camera's elevation above the disk, from the last frame (arm labels hide edge-on). */
+  private elevation = 1;
 
   constructor(tanHalfFov: number) {
-    this.pass = new FullscreenPass(galaxyFrag, {
+    this.pass = new FullscreenPass(withGalaxyLayout(galaxyFrag), {
       uCamPos: { value: new THREE.Vector3() },
       uCamBasis: { value: new THREE.Matrix3() },
       uTanHalfFov: { value: tanHalfFov },
@@ -48,10 +50,6 @@ export class GalaxyPass implements SceneInstance<MilkyWayParams> {
       uArmContrast: { value: 1 },
       uDust: { value: 1 },
       uRedshiftView: { value: false },
-      uDiskRadius: { value: GALAXY.diskRadius },
-      uBarHalfLength: { value: GALAXY.barHalfLength },
-      uBarAngle: { value: GALAXY.barAngle },
-      uPitch: { value: GALAXY.pitch },
     });
   }
 
@@ -67,6 +65,7 @@ export class GalaxyPass implements SceneInstance<MilkyWayParams> {
     else if (!settings.paused) this.turned += dt * p.spin * DEG;
     const u = this.pass.uniforms;
     u.uCamPos.value.copy(camera.position);
+    this.elevation = Math.abs(camera.position.y) / Math.max(camera.position.length(), 1e-6);
     u.uCamBasis.value.setFromMatrix4(camera.matrixWorld);
     u.uMaxSteps.value = steps;
     u.uAngle.value = this.turned;
@@ -77,13 +76,24 @@ export class GalaxyPass implements SceneInstance<MilkyWayParams> {
     this.pass.render(renderer, target);
   }
 
-  /** Sgr A* at the centre (click it to warp there) and the Sun, which turns with the galaxy. */
+  /**
+   * Sgr A* at the centre and the Sun (click either to warp there), and the spiral arms by name (from the
+   * same arm model the shader draws), all turning with the galaxy. Arm names would pile up on one
+   * line seen edge-on, so they only show from 25° above the disk.
+   */
   labels(): SceneLabel[] {
     galaxyToWorld(GALAXY.sunRadius, GALAXY.sunAngle, this.turned, this.sun);
-    return [
+    const labels: SceneLabel[] = [
       { position: this.centre, text: 'SGR A*', radius: 2.5, target: 'sgr-a-star' },
-      { position: this.sun, text: 'SUN', radius: 1, style: 'normal' },
+      { position: this.sun, text: 'SUN', radius: 1, style: 'normal', target: 'solar-system' },
     ];
+    if (this.elevation > Math.sin((25 * Math.PI) / 180)) {
+      for (const a of this.armLabels) {
+        galaxyToWorld(a.radius, a.angle, this.turned, a.position);
+        labels.push({ position: a.position, text: a.text, style: 'dim' });
+      }
+    }
+    return labels;
   }
 
   hudRows(camera: THREE.PerspectiveCamera): Array<[string, string]> {
