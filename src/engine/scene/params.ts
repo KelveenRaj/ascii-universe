@@ -25,9 +25,18 @@ export interface BooleanParam {
   hidden?: boolean;
 }
 
-export type Param = NumberParam | BooleanParam;
+/** One of a fixed set of named options, shown as a dropdown. */
+export interface ChoiceParam<V extends string = string> {
+  kind: 'choice';
+  label: string;
+  default: V;
+  options: ReadonlyArray<{ value: V; label: string }>;
+  hidden?: boolean;
+}
+
+export type Param = NumberParam | BooleanParam | ChoiceParam;
 export type ParamSchema = Record<string, Param>;
-export type ParamValue = number | boolean;
+export type ParamValue = number | boolean | string;
 
 /** The value object a schema describes, e.g. { diskSpeed: number; showGrid: boolean }. */
 export type ParamValues<S extends ParamSchema> = {
@@ -35,7 +44,9 @@ export type ParamValues<S extends ParamSchema> = {
     ? boolean
     : S[K] extends NumberParam
       ? number
-      : ParamValue;
+      : S[K] extends ChoiceParam
+        ? S[K]['options'][number]['value']
+        : ParamValue;
 };
 
 export function defaultParams<S extends ParamSchema>(schema: S): ParamValues<S> {
@@ -44,9 +55,15 @@ export function defaultParams<S extends ParamSchema>(schema: S): ParamValues<S> 
   return out as ParamValues<S>;
 }
 
-/** Validates one value: numbers are clamped to range, wrong types and NaN/Infinity rejected. */
+/**
+ * Validates one value: numbers are clamped to range, choices must be one of the options, wrong
+ * types and NaN/Infinity rejected.
+ */
 export function sanitizeParam(param: Param, value: unknown): ParamValue | undefined {
   if (param.kind === 'boolean') return typeof value === 'boolean' ? value : undefined;
+  if (param.kind === 'choice') {
+    return param.options.some((o) => o.value === value) ? (value as string) : undefined;
+  }
   if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
   return Math.min(param.max, Math.max(param.min, value));
 }
