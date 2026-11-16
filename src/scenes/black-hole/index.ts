@@ -5,8 +5,8 @@ import { BLACK_HOLE_MATERIALS, BLACK_HOLE_SKY } from '@/scenes/black-hole/materi
 import { BLACK_HOLE_PARAMS } from '@/scenes/black-hole/params';
 
 /**
- * Sagittarius A*: a Schwarzschild black hole with a thin, Doppler-beamed accretion disk and a
- * lensed starfield. Units: Schwarzschild radii.
+ * Sagittarius A*: a Schwarzschild black hole with a thick, optically thin accretion flow (or the
+ * older thin disk), an orbiting hot spot and a lensed starfield. Units: Schwarzschild radii.
  */
 export const blackHoleScene: SceneModule<typeof BLACK_HOLE_PARAMS> = {
   id: 'black-hole',

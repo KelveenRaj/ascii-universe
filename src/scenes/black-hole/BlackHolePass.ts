@@ -29,6 +29,9 @@ export class BlackHolePass implements SceneInstance<BlackHoleParams> {
     uBeaming: U<number>;
     uStarDensity: U<number>;
     uRedshiftView: U<boolean>;
+    uFlow: U<number>;
+    uHotspot: U<boolean>;
+    uThickness: U<number>;
   }>;
   /** Disk animation time, in r_s/c units; advances at diskSpeed × real time unless paused. */
   private diskTime = 0;
@@ -47,6 +50,9 @@ export class BlackHolePass implements SceneInstance<BlackHoleParams> {
       uBeaming: { value: 3 },
       uStarDensity: { value: 0.3 },
       uRedshiftView: { value: false },
+      uFlow: { value: 0 },
+      uHotspot: { value: true },
+      uThickness: { value: 1 },
     });
   }
 
@@ -69,6 +75,9 @@ export class BlackHolePass implements SceneInstance<BlackHoleParams> {
     u.uBeaming.value = p.beaming;
     u.uStarDensity.value = p.starDensity;
     u.uRedshiftView.value = settings.debugView === 'redshift';
+    u.uFlow.value = p.flow === 'thin' ? 1 : 0;
+    u.uHotspot.value = p.hotspot;
+    u.uThickness.value = p.thickness;
     this.pass.render(renderer, target);
   }
 

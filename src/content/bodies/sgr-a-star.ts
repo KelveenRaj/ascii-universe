@@ -12,7 +12,7 @@ export const sgrAStar: Body = {
   summary: [
     'About four million times the mass of the Sun, packed into a region smaller than the orbit of Mercury. We know it is there because stars close to it whip around something invisible, on orbits that only make sense if that something is a black hole.',
     'In 2022 the Event Horizon Telescope released the first image of it: a ring of glowing gas around a dark shadow, from data taken by a planet-sized network of radio dishes in 2017.',
-    'This view is a simplified model: the hole does not spin and the disk is infinitely thin. Under natural colours the disk is coloured by brightness, like the EHT images, not by what your eye would see.',
+    'What you see is modelled the way astronomers model the EHT data: a thick, hot, see-through cloud of gas swirling around a black hole that does not spin, with a flaring hot spot orbiting close in. The ring and the dark shadow come out of how light bends, not painted on. Left out: the spin, the jet and the magnetic field. Under natural colours the gas is coloured by brightness, like the EHT images, not by what your eye would see.',
   ],
   facts: [
     {
@@ -45,6 +45,20 @@ export const sgrAStar: Body = {
       value: '51.8 MICROARCSEC',
       detail: 'Diameter of the bright ring as seen from Earth (±2.3).',
       source: 'eht-2022',
+    },
+    {
+      label: 'FEEDING',
+      value: '~1/5 MOON A YEAR',
+      detail:
+        'It swallows only 5.2 to 9.5 billionths of a solar mass of gas a year, so the gas stays thin and hot and glows faintly. Models that match the EHT data best are seen close to face-on, within about 30°.',
+      source: 'eht-2022-models',
+    },
+    {
+      label: 'FLARES',
+      value: 'ORBIT ~45 MIN',
+      detail:
+        'In 2018 GRAVITY watched three infrared flares move in loops, a hot spot of gas going round at about 30% of light speed, just outside the innermost stable orbit.',
+      source: 'gravity-2018',
     },
     {
       label: 'STAR S2',
@@ -83,6 +97,22 @@ export const sgrAStar: Body = {
       publisher: 'EHT Collaboration, ApJL 930 L12',
       year: 2022,
       url: 'https://doi.org/10.3847/2041-8213/ac6674',
+    },
+    {
+      id: 'eht-2022-models',
+      title:
+        'First Sagittarius A* Event Horizon Telescope Results. V. Testing Astrophysical Models of the Galactic Center Black Hole',
+      publisher: 'EHT Collaboration, ApJL 930 L16',
+      year: 2022,
+      url: 'https://doi.org/10.3847/2041-8213/ac6672',
+    },
+    {
+      id: 'gravity-2018',
+      title:
+        'Detection of orbital motions near the last stable circular orbit of the massive black hole SgrA*',
+      publisher: 'GRAVITY Collaboration, A&A 618 L10',
+      year: 2018,
+      url: 'https://doi.org/10.1051/0004-6361/201834294',
     },
     {
       id: 'eso-2018',

@@ -90,7 +90,7 @@ test.describe('info card', () => {
     await expect(card).toContainText('SAGITTARIUS A*');
     await expect(card).toContainText('4.30 MILLION SUNS');
     await expect(
-      card.getByRole('link', { name: /Event Horizon Telescope Results/ }),
+      card.getByRole('link', { name: /Event Horizon Telescope Results. I./ }),
     ).toHaveAttribute('href', /^https:\/\//);
     await expect(page.getByLabel('Status')).toHaveCount(0); // the card takes the HUD's corner
     await expect(page).toHaveURL(/#\/sgr-a-star\/info$/);
