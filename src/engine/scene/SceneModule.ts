@@ -94,6 +94,11 @@ export interface WorldFrame {
   stars: readonly NearStar[];
   /** The star and planets (a system layer). */
   system?: { star: SystemBody; planets: readonly SystemBody[] };
+  /**
+   * The real Solar System (Sol's layer): the date to draw (ms since the epoch, UTC), and the body
+   * the ship is close to, if any, which the exposure follows (a SolarBodyId).
+   */
+  solar?: { time: number; focus: string | null };
 }
 
 /** Where the camera should be for a body inside a scene with several (see SceneInstance.focus). */

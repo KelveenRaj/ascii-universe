@@ -4,7 +4,7 @@ import { FlightModel } from '@/world/flight/FlightModel';
 import { findInterior, PLANET_KINDS, SYSTEM_MATERIAL, systemInterior } from '@/world/gen/planets';
 import { SectorCache } from '@/world/gen/sector';
 import { findLandmark, SUN_POS } from '@/world/landmarks';
-import { BlackHoleLayer, blocked, keepOut, SystemLayer } from '@/world/layers';
+import { BlackHoleLayer, blocked, keepOut, SolarLayer, SystemLayer } from '@/world/layers';
 import { distance, length, normalize, rotate, type Vec3d } from '@/world/math';
 import type { Target } from '@/world/Neighbourhood';
 
@@ -116,6 +116,91 @@ describe('black hole layer', () => {
     keepOut(f, layer.occluders());
     expect(length(f.pos)).toBeGreaterThanOrEqual(4);
     expect(f.vel[0]).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe('Sol layer', () => {
+  const make = () => new SolarLayer(place('sol'));
+
+  it('lists the Sun, the planets and the Moon, each at its real place for the date', () => {
+    const layer = make();
+    expect(layer.targets().map((t) => t.name)).toEqual([
+      'SUN',
+      'MERCURY',
+      'VENUS',
+      'EARTH',
+      'MOON',
+      'MARS',
+      'JUPITER',
+      'SATURN',
+      'URANUS',
+      'NEPTUNE',
+    ]);
+    const dist = (name: string) => length(layer.targets().find((t) => t.name === name)!.pos);
+    expect(dist('SUN')).toBe(0);
+    // squeezed, but in the real order outward
+    expect(dist('MERCURY')).toBeLessThan(dist('VENUS'));
+    expect(dist('JUPITER')).toBeLessThan(dist('NEPTUNE'));
+    expect(dist('NEPTUNE')).toBeLessThan(4.5);
+    // true sizes: the Sun is ~109 Earths across
+    expect(layer.radiusOf('sun') / layer.radiusOf('earth')).toBeCloseTo(109, -1);
+  });
+
+  it('spawns you outside the planets, inside the edge, facing the Sun', () => {
+    const layer = make();
+    const { pos, orient } = layer.spawn([0, 0, 1]);
+    expect(layer.outside(pos)).toBe(false);
+    expect(length(pos)).toBeGreaterThan(length(layer.targets()[8].pos));
+    const nose = rotate(orient, [0, 0, -1]);
+    expect(distance(nose, normalize([-pos[0], -pos[1], -pos[2]]))).toBeLessThan(1e-9);
+    expect(layer.outside([5, 0, 0])).toBe(true);
+  });
+
+  it('moves the planets with its clock, and holds still when told to', () => {
+    const layer = make();
+    const earth = () => [...layer.targets()[3].pos] as Vec3d;
+    const t0 = layer.time;
+    const a = earth();
+    layer.tick(0);
+    expect(layer.time).toBe(t0);
+    expect(earth()).toEqual(a);
+    layer.tick(10_000);
+    expect(layer.time).toBeGreaterThan(t0);
+    expect(distance(earth(), a)).toBeGreaterThan(0.1);
+  });
+
+  it('scales speed and camera with the distance to the nearest body', () => {
+    const layer = make();
+    layer.adapt(layer.spawn([0, 0, 1]).pos);
+    const far = { cruise: layer.tuning.cruise, back: layer.rig.back, dust: layer.dustRadius };
+    const earth = layer.targets()[3].pos;
+    const r = layer.radiusOf('earth');
+    layer.adapt([earth[0] + 3 * r, earth[1], earth[2]]);
+    expect(layer.tuning.cruise).toBeLessThan(far.cruise / 1000);
+    expect(layer.rig.back).toBeLessThan(far.back / 1000);
+    expect(layer.dustRadius).toBeLessThan(far.dust / 1000);
+    expect(layer.rig.back).toBeGreaterThan(0);
+    // exposure follows the body you're close to, and lets go far out
+    expect(layer.sceneFrame().solar!.focus).toBe('earth');
+    layer.adapt(layer.spawn([0, 0, 1]).pos);
+    expect(layer.sceneFrame().solar!.focus).toBeNull();
+  });
+
+  it('keeps the ship a body-radius clear of the surface, with room for the chase camera', () => {
+    const layer = make();
+    const earth = layer.targets()[3].pos;
+    const r = layer.radiusOf('earth');
+    const f = new FlightModel([earth[0] + 1.2 * r, earth[1], earth[2]]);
+    f.vel = [-1e-4, 0, 0];
+    keepOut(f, layer.occluders(), layer.keepOutMargin);
+    expect(distance(f.pos, earth)).toBeGreaterThanOrEqual(1.4 * r);
+  });
+
+  it('reads speed in km/s, then in light-speeds', () => {
+    const layer = make();
+    expect(layer.formatSpeed(0)).toBe('0 KM/S');
+    expect(layer.formatSpeed(1e-4)).toMatch(/KM\/S$/);
+    expect(layer.formatSpeed(1)).toMatch(/ C$/);
   });
 });
 

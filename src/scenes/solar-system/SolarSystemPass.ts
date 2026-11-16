@@ -11,14 +11,13 @@ import {
   findSolarBody,
   type SolarBodyId,
 } from '@/scenes/solar-system/bodies';
+import { DAY_MS, startDate } from '@/scenes/solar-system/clock';
 import { PLANET_IDS, orbitPath, type Vec3 } from '@/scenes/solar-system/ephemeris';
 import { layoutAt, squeeze, type PlacedBody } from '@/scenes/solar-system/layout';
 import { SOLAR_SYSTEM_PARAMS, type SolarSystemParams } from '@/scenes/solar-system/params';
 import solarFrag from '@/scenes/solar-system/shaders/solar-system.frag';
 
 type U<T> = THREE.IUniform<T>;
-
-const DAY_MS = 86400000;
 
 /**
  * Geometric albedo (NASA Planetary Fact Sheets), and the mean albedo of each body's map (printed
@@ -56,15 +55,8 @@ const POINT_MATERIAL: Record<SolarBodyId, number> = {
 const VIEW_RADII: Partial<Record<SolarBodyId, number>> = { saturn: 6.5, sun: 3.6 };
 const ORBIT_POINTS = 120;
 
-/** `?date=YYYY-MM-DD[THH:MM]` (UTC) fixes the starting date; otherwise it's now. */
-function startDate(): Date {
-  const raw = new URLSearchParams(window.location.search).get('date');
-  if (raw && /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/.test(raw)) {
-    const d = new Date(raw.length === 10 ? `${raw}T00:00:00Z` : `${raw}:00Z`);
-    if (!Number.isNaN(d.getTime())) return d;
-  }
-  return new Date();
-}
+/** How fast the exposure settles when you fly from one body's light to another's (1/s). */
+const EXPOSURE_EASE = 3;
 
 const maps = new THREE.TextureLoader();
 function loadMap(name: string): THREE.Texture {
@@ -142,6 +134,8 @@ export class SolarSystemPass implements SceneInstance<SolarSystemParams> {
   private orbits: Array<{ points: THREE.Vector3[] }> = [];
   private orbitsKey = '';
   private readonly labelPos = SOLAR_BODIES.map(v3);
+  /** Each body's exposure as drawn: eased in the open world, where the focus changes as you fly. */
+  private readonly easedGain: Array<number | null> = SOLAR_BODIES.map(() => null);
 
   constructor(tanHalfFov: number) {
     const rings = ringTexture();
@@ -237,8 +231,12 @@ export class SolarSystemPass implements SceneInstance<SolarSystemParams> {
   }
 
   render(frame: SceneFrame<SolarSystemParams>): void {
-    const { renderer, target, camera, settings, params: p, dt, frozenTime } = frame;
-    const placed = this.layout(p.trueScale);
+    const { renderer, target, camera, settings, params: p, dt, frozenTime, world } = frame;
+    // in the open world (Sol's layer) the flight owns the date, and the squeezed distances it
+    // flies through are the only ones that fit its units
+    const flying = world?.solar;
+    if (flying) this.days = (flying.time - this.start.getTime()) / DAY_MS;
+    const placed = this.layout(flying ? false : p.trueScale);
     const u = this.pass.uniforms;
     u.uCamBasis.value.setFromMatrix4(camera.matrixWorld);
     u.uTime.value = this.realTime;
@@ -248,7 +246,8 @@ export class SolarSystemPass implements SceneInstance<SolarSystemParams> {
 
     // exposure: like a camera, set for the body you're looking at (its sunlight and albedo), so
     // its neighbours show their true brightness next to it; the overview just compresses
-    const focus = this.focusId === 'solar-system' ? null : placed[this.focusId as SolarBodyId];
+    const focusId = flying ? flying.focus : this.focusId;
+    const focus = focusId && focusId !== 'solar-system' ? placed[focusId as SolarBodyId] : null;
     const cam = camera.position;
     for (const b of SOLAR_BODIES) {
       const pb = placed[b.id];
@@ -267,16 +266,31 @@ export class SolarSystemPass implements SceneInstance<SolarSystemParams> {
       } else {
         gain = (a.real / 0.45) * (1 / sun) ** 0.5;
       }
-      u.uGain.value[i] = (p.daylight * 1.1 * gain) / a.map;
+      let shown = (p.daylight * 1.1 * gain) / a.map;
+      if (flying) {
+        // like an eye adapting: ease in log space, since the gains span orders of magnitude
+        const last = this.easedGain[i];
+        if (last !== null) {
+          shown = Math.exp(
+            Math.log(last) +
+              (Math.log(shown) - Math.log(last)) * (1 - Math.exp(-EXPOSURE_EASE * dt)),
+          );
+        }
+        this.easedGain[i] = shown;
+      } else {
+        this.easedGain[i] = null;
+      }
+      u.uGain.value[i] = shown;
     }
     this.pass.render(renderer, target);
 
     // the clock runs after drawing, so focus() next frame sees the same date this frame drew
+    // (in the open world the flight's clock sets the date, at the top)
     if (frozenTime !== null) {
-      this.days = frozenTime * SOLAR_SYSTEM_PARAMS.timeRate.default;
+      if (!flying) this.days = frozenTime * SOLAR_SYSTEM_PARAMS.timeRate.default;
       this.realTime = frozenTime;
     } else if (!settings.paused) {
-      this.days += dt * p.timeRate;
+      if (!flying) this.days += dt * p.timeRate;
       this.realTime += dt;
     }
   }

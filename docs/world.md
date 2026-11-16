@@ -14,6 +14,7 @@ has its own units and its own scene:
 | galaxy   | kly from the core                               | `world-galaxy` | `WorldHost` (open space)               |
 | system   | su (game AU: orbits squeezed, planets fattened) | `world-system` | `SystemLayer` in `src/world/layers.ts` |
 | landmark | r_s around Sgr A*                               | `black-hole`   | `BlackHoleLayer`                       |
+| landmark | au around the Sun (distances log-squeezed)      | `solar-system` | `SolarLayer`                           |
 
 Flying inside a layer is continuous. Changing layer sets `worldStore.sceneId`, and the engine plays
 its usual warp to the new scene. The flight itself carries on through the warp.
@@ -34,6 +35,14 @@ Each layer brings its own:
 - `sceneFrame`
 - occluders (spheres the ship hides behind)
 - HUD rows
+
+Sol is the one real system, so it doesn't use the generated `SystemLayer`. `SolarLayer` reuses the
+explore scene (`SolarSystemPass`) and tells it the date and the body you're near through
+`WorldFrame.solar`. Its range runs from Neptune's orbit down to a few thousand km above a surface, so
+it uses three optional layer hooks: `tick` (the layer's own clock, so the planets move), `adapt`
+(speed, chase distance and dust follow your altitude over the nearest body) and `formatSpeed`
+(km/s, then light-speeds). `?date=YYYY-MM-DD` fixes the date, as in explore; the true-distances
+param doesn't apply in flight. Generated systems stay procedural.
 
 ## Generation
 

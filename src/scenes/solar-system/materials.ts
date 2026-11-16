@@ -1,4 +1,5 @@
 import type { Material, Sky } from '@/engine/display/palette/palettes';
+import { SHIP_MATERIALS } from '@/world/ship/colors';
 
 const ramp = (stops: Array<[number, string]>): Material['ramp'] => ({
   stops,
@@ -19,7 +20,7 @@ const tone = (dark: string, mid: string, light: string, top = '#FFFFFF'): Materi
  * Each surface class gets the colour it really has, from true-colour spacecraft imagery (the same
  * maps the classes come from: Blue Marble, LROC, Viking, MESSENGER, Cassini; Voyager 2 for Uranus
  * and Neptune). Order matters: index i is what solar-system.frag writes into B (the M_* constants
- * there).
+ * there). Your ship's rows come last, for the open world, where you fly through Sol (see ShipPass).
  */
 export const SOLAR_SYSTEM_MATERIALS = [
   // 0: the photosphere, about 5770 K: white with a faint warm cast
@@ -63,6 +64,7 @@ export const SOLAR_SYSTEM_MATERIALS = [
   // 24–25: the ice giants (Voyager 2 true colour)
   { id: 'uranus', label: 'Uranus', ramp: tone('#061418', '#4E9AA8', '#B4E4E8') },
   { id: 'neptune', label: 'Neptune', ramp: tone('#040A1E', '#2E5AB0', '#8CB0EC') },
+  ...SHIP_MATERIALS,
 ] as const satisfies readonly Material[];
 
 export const SOLAR_SYSTEM_SKY: Sky = { starTint: '#A9B2C8', background: '#010103' };
