@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { SceneLayout } from '@/engine/display/DisplayPipeline';
 import { FullscreenPass } from '@/engine/FullscreenPass';
 import type { SceneFrame, SceneInstance } from '@/engine/scene/SceneModule';
-import { GALAXY } from '@/scenes/milky-way/layout';
+import { withGalaxyLayout } from '@/scenes/milky-way/layout';
 import type { WorldGalaxyParams } from '@/scenes/world-galaxy/params';
 import worldGalaxyFrag from '@/scenes/world-galaxy/shaders/world-galaxy.frag';
 
@@ -30,10 +30,6 @@ export class WorldGalaxyPass implements SceneInstance<WorldGalaxyParams> {
     uGlow: U<number>;
     uContrast: U<number>;
     uRedshiftView: U<boolean>;
-    uDiskRadius: U<number>;
-    uBarHalfLength: U<number>;
-    uBarAngle: U<number>;
-    uPitch: U<number>;
     uNear: U<THREE.Vector4[]>;
     uNearInfo: U<THREE.Vector2[]>;
     uNearCount: U<number>;
@@ -41,7 +37,7 @@ export class WorldGalaxyPass implements SceneInstance<WorldGalaxyParams> {
   }>;
 
   constructor(tanHalfFov: number) {
-    this.pass = new FullscreenPass(worldGalaxyFrag, {
+    this.pass = new FullscreenPass(withGalaxyLayout(worldGalaxyFrag), {
       uCamPos: { value: new THREE.Vector3() },
       uCamBasis: { value: new THREE.Matrix3() },
       uTanHalfFov: { value: tanHalfFov },
@@ -55,10 +51,6 @@ export class WorldGalaxyPass implements SceneInstance<WorldGalaxyParams> {
       uGlow: { value: 0.35 },
       uContrast: { value: 1.6 },
       uRedshiftView: { value: false },
-      uDiskRadius: { value: GALAXY.diskRadius },
-      uBarHalfLength: { value: GALAXY.barHalfLength },
-      uBarAngle: { value: GALAXY.barAngle },
-      uPitch: { value: GALAXY.pitch },
       uNear: { value: Array.from({ length: NEAR_MAX }, () => new THREE.Vector4()) },
       uNearInfo: { value: Array.from({ length: NEAR_MAX }, () => new THREE.Vector2()) },
       uNearCount: { value: 0 },

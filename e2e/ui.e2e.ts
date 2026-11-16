@@ -336,8 +336,9 @@ test.describe('open world', () => {
     await page.getByRole('button', { name: 'JUMP' }).click();
     await expect(page.getByTestId('world-message')).toContainText('JUMPING TO VEGA');
     // a ~25 ly hop: under a second to turn, ~3 s in hyperspace, then you're there
+    // (the jump runs in simulated time, so on the CPU renderer the galaxy shader sets the pace)
     await expect(page.getByTestId('world-message')).toContainText(/(ARRIVED: |DISCOVERED )VEGA/, {
-      timeout: 40_000,
+      timeout: 90_000,
     });
     await expect(page.getByRole('button', { name: 'JUMP' })).toHaveCount(0);
 

@@ -1,16 +1,23 @@
 import { formatSystemId, parseSystemId, type SystemId } from '@/world/location';
 import { add, scale, type Vec3d } from '@/world/math';
 import { density } from '@/world/gen/density';
+import { densityG1 } from '@/world/gen/densityG1';
 import { starName } from '@/world/gen/names';
 import { hashInts, mulberry32, pickWeighted, randInt, type Rng } from '@/world/rng';
 
 /**
- * The procedural galaxy, version 1. Space is cut into cubic sectors; each sector's star systems
+ * The procedural galaxy, version 2. Space is cut into cubic sectors; each sector's star systems
  * come only from (GEN, sector coordinates), so everyone sees the same stars in the same places,
  * forever. Changing anything here that moves or renames systems needs a new GEN (and the old
  * generator kept for saved discoveries): ids carry it, see world/location.ts.
  */
-export const GEN = 1;
+export const GEN = 2;
+/**
+ * Every generator that ever shipped, by version: how crowded the galaxy is at a point. Version 1
+ * used the old generic four-arm galaxy; version 2 the shape rebuilt from published models. Old
+ * ids keep resolving with the generator they were made with.
+ */
+const GENERATORS: Record<number, (p: Vec3d) => number> = { 1: densityG1, 2: density };
 /** Sector edge in kly (50 light-years). */
 export const SECTOR = 0.05;
 /** Systems per sector at the Sun's density. Real space has hundreds; these are the ones worth a visit. */
@@ -71,20 +78,22 @@ function poisson(rng: Rng, mean: number): number {
 }
 
 /** The star systems in one sector, in a fixed order (index = their id's last part). */
-export function sectorSystems(sector: SectorCoord): StarSystem[] {
-  const rng = mulberry32(hashInts(GEN, sector[0], sector[1], sector[2]));
+export function sectorSystems(sector: SectorCoord, gen: number = GEN): StarSystem[] {
+  const densityAt = GENERATORS[gen];
+  if (!densityAt) return [];
+  const rng = mulberry32(hashInts(gen, sector[0], sector[1], sector[2]));
   const corner = scale(sector as Vec3d, SECTOR);
   const centre = add(corner, [SECTOR / 2, SECTOR / 2, SECTOR / 2]);
-  const count = poisson(rng, SYSTEMS_AT_SUN * density(centre));
+  const count = poisson(rng, SYSTEMS_AT_SUN * densityAt(centre));
   const out: StarSystem[] = [];
   for (let i = 0; i < count; i++) {
     // each system draws from its own stream, so adding fields later can't shift its neighbours
-    const r = mulberry32(hashInts(GEN, sector[0], sector[1], sector[2], i));
+    const r = mulberry32(hashInts(gen, sector[0], sector[1], sector[2], i));
     const pos = add(corner, [r() * SECTOR, r() * SECTOR, r() * SECTOR]);
     const starClass = STAR_CLASSES[pickWeighted(r, WEIGHTS)];
     const info = CLASS_INFO[starClass];
     out.push({
-      id: formatSystemId(GEN, sector, i),
+      id: formatSystemId(gen, sector, i),
       name: starName(r),
       pos,
       starClass,
@@ -137,6 +146,6 @@ export class SectorCache {
 /** The system with this id (from a save, say), regenerated; null if there's no such system. */
 export function findSystem(id: SystemId): StarSystem | null {
   const parsed = parseSystemId(id);
-  if (!parsed || parsed.gen !== GEN) return null;
-  return sectorSystems(parsed.sector)[parsed.index] ?? null;
+  if (!parsed || !GENERATORS[parsed.gen]) return null;
+  return sectorSystems(parsed.sector, parsed.gen)[parsed.index] ?? null;
 }
