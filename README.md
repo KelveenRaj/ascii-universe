@@ -37,6 +37,11 @@ as a short peek on a phone (MORE expands it). **X** or **I** hides it, and it is
 The **minimap** (top right) is how you travel: click Sgr A\* or Sol in the galaxy map to warp there,
 and inside the Solar System click a planet. `< GALAXY` (or Backspace) goes back out.
 
+**TOURS** (bottom right) runs a guided tour: a question at a time, each answered by cited facts from the
+cards. **FLY HERE** on a card switches to exploration mode with your ship right at that body, such as
+Saturn's rings. **SHARE** copies a link to what you're looking at, from this angle (`#/earth?v=yaw,elevation,distance`),
+saves the screen as a PNG, or copies the frame as text.
+
 ![Info card for Sagittarius A*](docs/info-card.png)
 
 Press **C** to copy the current frame as plain text. It matches the screen character for character,
@@ -172,25 +177,22 @@ src/
     transition/  the warp effect
     display/  DisplayPipeline: scene buffer, grid, glyph atlas, palettes, bloom/ASCII/CRT/readback
     scene/    SceneModule (the contract every place implements) and its ParamSchema
-    game/     GameModule (the contract every minigame implements), GameHost, game input
-  games/      one folder per minigame, plus registry.ts
   profile/    the pilot profile: schema, migration, save repos (browser now, server later), events
-    slingshot/   fling a ship past Sgr A* (game rules, ship sprites)
   scenes/     one folder per place, plus registry.ts
     milky-way/   the hub: galaxy shader, layout from the published numbers, camera presets, params
     black-hole/  Sgr A*: ray-marching pass + shaders, light, orbit and 3D flight physics, camera presets, params
-    world-galaxy/, world-system/  the open world's galaxy (from inside the disk) and star systems
+    world-galaxy/  the open world's galaxy (from inside the disk)
   shaders/    display passes and shared GLSL includes
-  state/      settings (persisted), scene params (persisted per scene), navigation (URL hash), game HUD + high scores, stats, UI, commands
-  ui/         HUD, info card, game and world overlays, hangar, new pilot, navigator, settings panel, help, boot screen, copy-as-text
+  state/      settings (persisted), scene params (persisted per scene), navigation (URL hash), tours, launch, stats, UI, commands
+  ui/         status line, info card, minimap, flight HUD, tours and share dock, hangar, new pilot, settings panel, help, boot screen, copy-as-text
   world/      the open world (see docs/world.md): WorldHost, layers, generation, flight, ship parts
 e2e/          Playwright: screenshot tests (baselines in e2e/__screenshots__) and UI checks
-tests/        content (every fact cited), hash routes, warps, geodesics, orbits, 3D flight, slingshot, camera, scenes, glyphs, palettes, grid, settings, quality governor, text export
+tests/        content (every fact cited), hash routes, warps, geodesics, orbits, 3D flight, tours, camera, scenes, glyphs, palettes, grid, settings, quality governor, text export
 ```
 
 Conventions: imports are absolute from `src/` (`import { x } from '@/state/settings'`, enforced by
 ESLint), and component styles are CSS Modules next to each component (`Hud.tsx` + `Hud.module.css`).
-Adding a place is mostly a scene folder and a content file, and a minigame is a folder in `src/games/`: see [docs/adding-a-scene.md](docs/adding-a-scene.md).
+Adding a place is mostly a scene folder and a content file (and a tour is an entry in `src/content/tours.ts`): see [docs/adding-a-scene.md](docs/adding-a-scene.md).
 `src/styles/global.css` only holds the theme variables and reset.
 
 ## Credits

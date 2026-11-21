@@ -1,7 +1,6 @@
 import * as THREE from 'three';
-import { drawLabel, projectToGrid } from '@/engine/display/labels';
+import { drawLabel, projectToGrid, type DrawView } from '@/engine/display/labels';
 import type { TextLayer } from '@/engine/display/TextLayer';
-import type { GameView } from '@/engine/game/Game';
 import type { WorldFrame } from '@/engine/scene/SceneModule';
 import { track } from '@/profile/EventSink';
 import type { SceneId } from '@/scenes/registry';
@@ -215,6 +214,11 @@ export class WorldHost {
       this.target = (dev.target && this.findTarget(dev.target)) || null;
       return;
     }
+    const startAt = worldStore.getState().startAt;
+    if (startAt) {
+      worldStore.setState({ startAt: null });
+      if (this.startAtBody(flight, startAt)) return;
+    }
     // resume where you were last time
     void profileStore
       .getState()
@@ -225,6 +229,23 @@ export class WorldHost {
         if (flight.speed > 0 || flight.throttle > 0 || this.jump || this.inner) return; // moved on
         this.resume(flight, loc);
       });
+  }
+
+  /** FLY HERE: starts inside Sol or Sgr A*, at the body asked for. False if there's no such place. */
+  private startAtBody(flight: FlightModel, bodyId: string): boolean {
+    const placeId = bodyId === 'sgr-a-star' ? 'sgr-a-star' : 'sol';
+    const place = placeTarget(placeId);
+    const layer = place && layerFor(place);
+    if (!place || !layer) return false;
+    this.visiting.add(place.id);
+    this.setLayer(layer, `ENTERING ${place.name}`);
+    const spot =
+      layer instanceof SolarLayer && bodyId !== 'solar-system' ? layer.placeNear(bodyId) : null;
+    const at = spot ?? layer.spawn([0, 0.12, 1]);
+    flight.pos = at.pos;
+    flight.orient = at.orient;
+    this.visit(place);
+    return true;
   }
 
   private resume(flight: FlightModel, loc: WorldLocation): void {
@@ -508,7 +529,7 @@ export class WorldHost {
 
   /** The cells the ship covers on screen (from its bounding box), or null if it's behind you. */
   private shipCells(
-    view: GameView,
+    view: DrawView,
     cols: number,
     rows: number,
   ): { col0: number; row0: number; col1: number; row1: number } | null {
@@ -709,7 +730,7 @@ export class WorldHost {
     return this.flight ? this.pose : null;
   }
 
-  draw(text: TextLayer, view: GameView): void {
+  draw(text: TextLayer, view: DrawView): void {
     const flight = this.flight;
     // the ship itself is a mesh in the scene (ShipPass); in the hangar only the ship shows
     if (!flight || this.showroom) return;
@@ -730,7 +751,7 @@ export class WorldHost {
   }
 
   /** Brackets round the target with its name and distance, or an arrow at the edge pointing to it. */
-  private drawTarget(text: TextLayer, view: GameView, flight: FlightModel, t: Target): void {
+  private drawTarget(text: TextLayer, view: DrawView, flight: FlightModel, t: Target): void {
     toV3(t.pos, this.targetPos);
     const label = `${t.name} ${this.formatDistance(distance(t.pos, flight.pos))}`;
     // keep clear of the edges, and of the hint line and buttons along the bottom

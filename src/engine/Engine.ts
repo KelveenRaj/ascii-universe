@@ -9,14 +9,18 @@ import { InputManager } from '@/engine/camera/InputManager';
 import { applyDevQueryParams } from '@/engine/devParams';
 import { DisplayPipeline } from '@/engine/display/DisplayPipeline';
 import { cellAt } from '@/engine/display/grid';
-import { drawLabel, type LabelRect } from '@/engine/display/labels';
-import type { GameModule, GameView } from '@/engine/game/Game';
-import { GameHost } from '@/engine/game/GameHost';
+import { drawLabel, type DrawView, type LabelRect } from '@/engine/display/labels';
 import { QualityGovernor } from '@/engine/quality/QualityGovernor';
-import { findGame } from '@/games/registry';
 import type { SceneInstance, SceneModule } from '@/engine/scene/SceneModule';
 import { Warp } from '@/engine/transition/Warp';
-import { activeBody, activeScene, navigationStore } from '@/state/navigation';
+import {
+  activeBody,
+  activeScene,
+  formatHash,
+  formatView,
+  navigationStore,
+  parseView,
+} from '@/state/navigation';
 import { sceneParamsStore } from '@/state/sceneParams';
 import { worldStore } from '@/state/world';
 import { ShipPass } from '@/world/ship/ShipPass';
@@ -24,7 +28,6 @@ import { WorldHost } from '@/world/WorldHost';
 
 const FOV_DEG = 50;
 const STATS_INTERVAL_MS = 250;
-const WORLD_UP = new THREE.Vector3(0, 1, 0);
 /** After a warp the camera starts this many times further out than the first preset and eases in. */
 const ARRIVE_FROM = 2.5;
 /** A press that moves less than this (CSS px) is a click, not a drag. */
@@ -39,9 +42,8 @@ const CLICK_SLOP_PX = 5;
  *
  * The scene follows the navigation store: when you move to a body rendered by another scene, a
  * Warp plays and the scene is swapped at its midpoint, while the screen is dark. Clicking a label
- * that has a `target` moves there. A minigame in the route runs on top of the scene (GameHost):
- * it gets the input and the text layer, and the camera is parked on the game's preset. In the open
- * world (WorldHost) you fly your ship instead: it takes the input and places the camera behind you.
+ * that has a `target` moves there. In exploration mode (WorldHost) you fly your ship instead: it
+ * takes the input and places the camera behind you.
  */
 export class Engine {
   private readonly canvas: HTMLCanvasElement;
@@ -62,13 +64,12 @@ export class Engine {
   /** Clickable labels from the last frame, with the body each one warps to. */
   private labelHits: Array<{ rect: LabelRect; target: string }> = [];
   private pressAt: { x: number; y: number } | null = null;
-  private readonly games: GameHost;
   private readonly world: WorldHost;
   /** Your ship's mesh, drawn into the scene buffer over the open world's scenes. */
   private readonly shipPass = new ShipPass();
-  private readonly gameView: GameView;
-  /** The running game placed the camera itself last frame. */
-  private gameCameraFixed = false;
+  private readonly drawView: DrawView;
+  /** Save the next finished frame as a PNG. */
+  private captureImage = false;
   /** The body the camera was last sent to inside a scene with several (SceneInstance.focus). */
   private focusId: string | null = null;
   private readonly focusAt = new THREE.Vector3();
@@ -107,12 +108,9 @@ export class Engine {
     this.controller = new CameraController(tanHalfFov, module.camera);
     this.controller.attractEnabled = settings.attractMode;
     this.followFocus(true);
+    this.applySharedView();
     this.input = new InputManager(canvas, this.controller);
-    this.gameView = { camera: this.camera, tanHalfFov, aspect: 16 / 9 };
-    this.games = new GameHost(
-      (game) => this.onGameStart(game),
-      () => this.onGameStop(),
-    );
+    this.drawView = { camera: this.camera, tanHalfFov, aspect: 16 / 9 };
 
     // Settings that need resources rebuilt are handled once on change, not checked every frame.
     this.unsubscribers.push(settingsStore.subscribe((s, prev) => this.onSettingsChange(s, prev)));
@@ -123,7 +121,8 @@ export class Engine {
         // a scene that follows bodies goes back to the body's own view instead of the origin
         if (cmd.type === 'preset' || cmd.type === 'resetView') this.focusId = null;
         else if (cmd.type === 'captureText') this.captureText();
-        else if (cmd.type === 'gameAction') this.games.input.tap(cmd.action);
+        else if (cmd.type === 'captureImage') this.captureImage = true;
+        else if (cmd.type === 'copyLink') this.copyLink();
       }),
     );
     // three.js itself keeps the context restorable and rebuilds its GL state on restore;
@@ -142,9 +141,24 @@ export class Engine {
     this.renderer.setAnimationLoop((time) => this.frame(time));
   }
 
+  /** A shared link's `?v=yaw,elevation,distance`, within the scene's camera limits. */
+  private applySharedView(): void {
+    const view = parseView(window.location.hash);
+    if (!view || navigationStore.getState().world) return;
+    const { goal, limits } = this.controller;
+    const rad = Math.PI / 180;
+    goal.yaw = view.yaw * rad;
+    goal.elevation = Math.max(
+      -limits.maxElevation,
+      Math.min(limits.maxElevation, view.elevation * rad),
+    );
+    goal.distance = Math.max(limits.minDistance, Math.min(limits.maxDistance, view.distance));
+    this.controller.snap();
+  }
+
   private onSettingsChange(s: SettingsState, prev: SettingsState): void {
     const relayout = this.display.onSettingsChange(s, prev);
-    if (s.attractMode !== prev.attractMode && !this.games.active && !this.world.active) {
+    if (s.attractMode !== prev.attractMode && !this.world.active) {
       this.controller.attractEnabled = s.attractMode;
     }
     if (s.quality !== prev.quality && s.quality === 'auto') this.governor.reset();
@@ -201,59 +215,6 @@ export class Engine {
     const target = this.labelTargetAt(e.clientX, e.clientY);
     if (target) navigationStore.getState().goTo(target);
   };
-
-  // ---- games --------------------------------------------------------------------------------
-
-  /** The game the route asks for, once its scene is on screen (never during a warp). */
-  private wantedGame(): GameModule | null {
-    const { game, bodyId } = navigationStore.getState();
-    const module = game ? findGame(game) : undefined;
-    if (!module || this.warp || module.bodyId !== bodyId || activeScene().id !== this.sceneId) {
-      return null;
-    }
-    return module;
-  }
-
-  /** Parks the camera on the game's start view and hands it the input. */
-  private onGameStart(game: GameModule): void {
-    this.input.setMode('none');
-    this.controller.attractEnabled = false;
-    this.controller.setView(game.startView, true);
-    this.gameCameraFixed = false;
-  }
-
-  private onGameStop(): void {
-    this.input.setMode('all');
-    this.controller.attractEnabled = settingsStore.getState().attractMode;
-    // hand the camera back from wherever the game left it
-    if (this.gameCameraFixed) this.controller.placeAt(this.camera.position);
-    this.gameCameraFixed = false;
-  }
-
-  /**
-   * Points the camera the way the running game asks: the player's orbit camera (mouse/touch on or
-   * off), or a pose the game sets. Going back from a game-set pose to orbiting starts from there.
-   */
-  private applyGameCamera(): void {
-    const cam = this.games.camera();
-    if (cam.mode === 'fixed') {
-      this.input.setMode('none');
-      this.camera.position.copy(cam.position);
-      this.camera.up.copy(cam.up ?? WORLD_UP);
-      this.camera.lookAt(cam.target);
-      this.camera.updateMatrixWorld(true);
-      this.gameCameraFixed = true;
-      return;
-    }
-    if (this.gameCameraFixed) {
-      this.controller.placeAt(this.camera.position);
-      this.gameCameraFixed = false;
-    }
-    this.input.setMode(cam.mode === 'orbit' ? 'pointer' : 'none');
-    const module = this.games.module;
-    if (cam.mode === 'orbit' && cam.reset && module) this.controller.setView(module.startView);
-    this.controller.apply(this.camera);
-  }
 
   // ---- open world -------------------------------------------------------------------------
 
@@ -367,6 +328,39 @@ export class Engine {
     uiStore.getState().setTextExport(text);
   }
 
+  /** The last frame as a PNG download. Called right after drawing, while the buffer still holds it. */
+  private saveImage(): void {
+    this.captureImage = false;
+    const name = navigationStore.getState().world ? 'flight' : navigationStore.getState().bodyId;
+    this.canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ascii-universe-${name}.png`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      uiStore.getState().notify('IMAGE SAVED');
+    }, 'image/png');
+  }
+
+  /** A link to this body, seen from the camera's current angle (infographics mode only). */
+  private copyLink(): void {
+    const nav = navigationStore.getState();
+    const base = `${window.location.origin}${window.location.pathname}`;
+    let hash = formatHash(nav);
+    if (!nav.world) {
+      const g = this.controller.goal;
+      const deg = 180 / Math.PI;
+      hash += `?${formatView({ yaw: g.yaw * deg, elevation: g.elevation * deg, distance: g.distance })}`;
+    }
+    const url = `${base}${hash}`;
+    navigator.clipboard
+      ?.writeText(url)
+      .then(() => uiStore.getState().notify('LINK COPIED'))
+      .catch(() => uiStore.getState().notify(url));
+  }
+
   private resize(): void {
     if (this.disposed) return;
     const width = Math.max(1, this.canvas.clientWidth);
@@ -414,12 +408,11 @@ export class Engine {
 
     this.checkNavigation();
     this.advanceWarp(dt);
-    this.games.sync(this.wantedGame());
     this.syncWorld();
     this.input.update(dt);
     this.controller.update(dt);
     const grid = this.display.currentGrid;
-    this.gameView.aspect = grid ? grid.cols / grid.rows : this.drawSize.x / this.drawSize.y;
+    this.drawView.aspect = grid ? grid.cols / grid.rows : this.drawSize.x / this.drawSize.y;
     if (this.world.active) {
       // frozen while warping; until the flight's scene is on screen (the first half of a warp),
       // the camera holds still too
@@ -427,12 +420,9 @@ export class Engine {
       this.world.update(
         dt,
         s.paused || this.frozenTime !== null || this.warp !== null,
-        this.gameView,
+        this.drawView,
       );
       if (onScreen) this.applyWorldCamera();
-    } else if (this.games.active) {
-      this.games.update(dt, this.gameView);
-      this.applyGameCamera();
     } else {
       this.followFocus(false);
       this.controller.apply(this.camera);
@@ -454,6 +444,7 @@ export class Engine {
     this.renderShip();
     this.drawLabels(s);
     this.display.render(this.renderer, s, timeMs);
+    if (this.captureImage) this.saveImage();
 
     if (this.display.fontReady && !statsStore.getState().ready)
       statsStore.setState({ ready: true });
@@ -476,9 +467,8 @@ export class Engine {
   }
 
   /**
-   * Repaints the text layer: the warp while one runs, else your ship in the open world, else the
-   * game, else scene labels (ASCII
-   * final view only; the layer is left empty otherwise).
+   * Repaints the text layer: the warp while one runs, else your ship in exploration mode, else
+   * scene labels (ASCII final view only; the layer is left empty otherwise).
    */
   private drawLabels(s: SettingsState): void {
     const text = this.display.text;
@@ -490,11 +480,7 @@ export class Engine {
       return;
     }
     if (this.world.active) {
-      this.world.draw(text, this.gameView);
-      return;
-    }
-    if (this.games.active) {
-      this.games.draw(text, this.gameView);
+      this.world.draw(text, this.drawView);
       return;
     }
     if (!s.labels || !this.scene.labels) return;
@@ -530,7 +516,6 @@ export class Engine {
     this.canvas.removeEventListener('pointermove', this.onHover);
     this.canvas.removeEventListener('click', this.onClick);
     this.unsubscribers.forEach((off) => off());
-    this.games.dispose();
     this.world.dispose();
     this.shipPass.dispose();
     this.input.dispose();

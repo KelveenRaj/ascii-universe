@@ -149,21 +149,53 @@
   color: var(--ink-bright);
 }
 
-.more {
-  min-height: 36px;
+.prompt {
+  margin: 4px 0 8px;
+  color: var(--accent);
+}
+
+.actions {
+  display: flex;
+  border-top: 2px solid var(--ink-dim);
+}
+
+.action {
+  flex: 1;
+  white-space: nowrap;
+  min-height: 40px;
+  padding: 0 6px;
   font: inherit;
   font-size: 8px;
   color: var(--accent);
   background: none;
   border: 0;
-  border-top: 2px solid var(--ink-dim);
   cursor: pointer;
 }
 
-.more:hover,
-.more:focus-visible {
+.action + .action {
+  border-left: 1px solid var(--ink-dim);
+}
+
+.action:hover:not(:disabled),
+.action:focus-visible {
   color: var(--ink-bright);
   outline: none;
+}
+
+.action:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.primary {
+  color: #000;
+  background: var(--ink);
+}
+
+.primary:hover,
+.primary:focus-visible {
+  color: #000;
+  background: var(--ink-bright);
 }
 
 /* ---- phones, portrait: a peek beside the minimap, the full card as a sheet ---------------- */

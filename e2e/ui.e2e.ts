@@ -180,6 +180,53 @@ test.describe('home and warps', () => {
   });
 });
 
+/** Guided tours, sharing a view, and flying straight to a body. */
+test.describe('tours, sharing and fly here', () => {
+  const settings = { quality: 'low', attractMode: false };
+
+  test('a tour walks its steps with cited facts, and Esc ends it', async ({ page }) => {
+    await openWith(page, settings);
+    await page.getByRole('button', { name: 'Guided tours' }).click();
+    await page.getByText('A WALK OUT FROM THE SUN').click();
+    const card = page.getByTestId('info-panel');
+    await expect(page).toHaveURL(/#\/sun$/);
+    await expect(card).toContainText('TOUR 1/5');
+    await expect(card).toContainText('695,700 KM');
+    await card.getByRole('button', { name: 'NEXT' }).click();
+    await expect(page).toHaveURL(/#\/mercury$/);
+    await expect(card).toContainText('TOUR 2/5');
+    await card.getByRole('button', { name: 'BACK' }).click();
+    await expect(page).toHaveURL(/#\/sun$/);
+    await page.keyboard.press('Escape');
+    await expect(card).not.toContainText('TOUR');
+  });
+
+  test('a tour ends when you pick somewhere else on the map', async ({ page }) => {
+    await openWith(page, settings, '/#/solar-system');
+    await page.getByRole('button', { name: 'Guided tours' }).click();
+    await page.getByText('WHERE ARE WE?').click();
+    await expect(page.getByTestId('info-panel')).toContainText('TOUR 1/3');
+    await page.getByTestId('minimap').getByRole('button', { name: 'Go to EARTH' }).click();
+    await expect(page.getByTestId('info-panel')).not.toContainText('TOUR');
+  });
+
+  test('a shared link opens the same place from the same angle', async ({ page }) => {
+    await openWith(page, settings, '/#/earth?v=40,20,3');
+    await expect(page.getByTestId('info-panel')).toContainText('EARTH');
+    await expect(page).toHaveURL(/#\/earth$/); // tidied once read
+  });
+
+  test('FLY HERE puts the ship at the body, with its card', async ({ page }) => {
+    await openWith(page, settings, '/#/saturn');
+    await page.getByRole('button', { name: /Switch to exploration mode/ }).click();
+    await expect(page).toHaveURL(/#\/world$/);
+    await page.getByTestId('onboarding').waitFor({ timeout: 30_000 });
+    await page.getByRole('button', { name: 'LAUNCH' }).click();
+    await expect(page.getByTestId('flight-panel')).toContainText('SOL', { timeout: 60_000 });
+    await expect(page.getByTestId('info-panel')).toContainText('SATURN', { timeout: 60_000 });
+  });
+});
+
 /** A new pilot's first flight opens on the callsign dialog: take the suggested callsign. */
 async function launchPilot(page: Page) {
   await page.getByTestId('onboarding').waitFor({ timeout: 30_000 });

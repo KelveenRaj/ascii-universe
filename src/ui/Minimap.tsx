@@ -10,6 +10,7 @@ import { cx } from '@/ui/cx';
 import styles from '@/ui/Minimap.module.css';
 import { LANDMARKS, MAP_GALAXY_EXTENT } from '@/world/landmarks';
 import { SOL_MAP_EXTENT } from '@/world/layers';
+import { inSolarSystem } from '@/world/places';
 
 type Scope = WorldMap['scope'];
 
@@ -52,9 +53,6 @@ const GALAXY_PLACES: MapBody[] = LANDMARKS.map((l) => ({
   x: l.pos[0],
   z: l.pos[2],
 }));
-
-const inSolarSystem = (id: string) =>
-  id === 'solar-system' || SOLAR_BODIES.some((b) => b.id === id);
 
 /** What to draw while looking at a body in infographics mode. */
 function viewForBody(bodyId: string, solBodies: MapBody[]): MapView {

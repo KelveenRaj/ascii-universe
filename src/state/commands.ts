@@ -1,5 +1,3 @@
-import type { GameAction } from '@/engine/game/Game';
-
 /**
  * One-shot commands from the UI to the engine (things that aren't settings, like "jump to this
  * view"). The engine subscribes; React just calls `sendCommand`.
@@ -10,8 +8,10 @@ export type Command =
   | { type: 'resetView' }
   /** Snapshot the current frame as text and open the copy-as-text dialog. */
   | { type: 'captureText' }
-  /** An on-screen game button (touch controls), same as pressing its key. */
-  | { type: 'gameAction'; action: GameAction };
+  /** Save the current frame as a PNG (the share image). */
+  | { type: 'captureImage' }
+  /** Copy a link to this view (body and camera angle) to the clipboard. */
+  | { type: 'copyLink' };
 
 type Listener = (command: Command) => void;
 const listeners = new Set<Listener>();

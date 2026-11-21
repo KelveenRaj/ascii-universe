@@ -4,6 +4,7 @@ import { worldStore } from '@/state/world';
 import commonStyles from '@/ui/common.module.css';
 import { PixelButton } from '@/ui/controls';
 import { cx } from '@/ui/cx';
+import { ShareMenu } from '@/ui/Dock';
 import styles from '@/ui/FlightHud.module.css';
 import { flightPad } from '@/world/flight/pad';
 
@@ -143,6 +144,7 @@ export function FlightHud() {
               >
                 HANGAR
               </PixelButton>
+              <ShareMenu />
               <PixelButton onClick={land} title="Back to the infographics (Esc)">
                 LAND
               </PixelButton>
