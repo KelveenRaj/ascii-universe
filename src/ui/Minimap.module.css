@@ -110,6 +110,11 @@
   stroke: var(--ink-bright);
 }
 
+/* the ship often sits right on a place (it spawns at Sol): clicks must reach the dot beneath */
+.ship {
+  pointer-events: none;
+}
+
 .ship polygon {
   fill: var(--ink-bright);
   stroke: #000;
