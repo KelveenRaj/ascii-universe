@@ -6,6 +6,7 @@ import { navigationStore, startHashSync } from '@/state/navigation';
 import { startProfileAutosave } from '@/state/profile';
 import { settingsStore } from '@/state/settings';
 import { BootScreen } from '@/ui/BootScreen';
+import { InfoDock, Notice } from '@/ui/Dock';
 import { FlightHud } from '@/ui/FlightHud';
 import { Hangar } from '@/ui/Hangar';
 import { HelpOverlay } from '@/ui/HelpOverlay';
@@ -22,7 +23,8 @@ import { usePaletteTheme } from '@/ui/usePaletteTheme';
 /**
  * Two modes share one screen: infographics (warp between the Milky Way, Sgr A* and the Solar
  * System, read about what you see) and exploration (fly your own ship; contact with a real body
- * brings up its card). The map top right and the card top left serve both.
+ * brings up its card). The map top right and the card top left serve both; tours and sharing
+ * sit bottom right.
  */
 export default function App() {
   usePaletteTheme();
@@ -42,6 +44,8 @@ export default function App() {
       <Hangar />
       <Onboarding />
       <Minimap />
+      <InfoDock />
+      <Notice />
       <TopBar />
       <SettingsPanel />
       <HelpOverlay />

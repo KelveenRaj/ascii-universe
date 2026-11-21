@@ -2,14 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_BODY_ID } from '@/content/catalog';
 import {
   formatHash,
+  formatView,
   navigationStore,
   parseHash,
+  parseView,
   activeScene,
   type Route,
 } from '@/state/navigation';
 
 /** Infographics mode: the card is open unless the route says `clear`. */
-const at = (bodyId: string, info = true): Route => ({ bodyId, info, game: null, world: false });
+const at = (bodyId: string, info = true): Route => ({ bodyId, info, world: false });
 
 describe('hash routes', () => {
   it('parses a body, card open by default and hidden with /clear', () => {
@@ -23,6 +25,7 @@ describe('hash routes', () => {
     expect(parseHash('#/solar-system')).toEqual(at('solar-system'));
     expect(parseHash('#/earth')).toEqual(at('earth'));
     expect(parseHash('#/sgr-a-star/game/slingshot')).toEqual(at('sgr-a-star')); // archived
+    expect(parseHash('#/earth?v=30,12,4.5')).toEqual(at('earth')); // a shared camera angle
   });
 
   it('falls back to the default body for anything unknown', () => {
@@ -69,12 +72,18 @@ describe('navigation store', () => {
     expect(navigationStore.getState().info).toBe(true);
   });
 
-  it('has no minigames', () => {
-    const nav = navigationStore.getState();
-    nav.goTo('sgr-a-star');
-    nav.setGame('slingshot');
-    expect(navigationStore.getState().game).toBe(null);
-    nav.goTo('milky-way');
+  it('reads and writes a shared camera angle', () => {
+    expect(parseView('#/earth?v=30,12,4.5')).toEqual({ yaw: 30, elevation: 12, distance: 4.5 });
+    for (const bad of [
+      '#/earth',
+      '#/earth?v=',
+      '#/earth?v=1,2',
+      '#/earth?v=a,b,c',
+      '#/earth?v=1,2,0',
+    ]) {
+      expect(parseView(bad), bad).toBeNull();
+    }
+    expect(formatView({ yaw: 30.04, elevation: -12, distance: 4.5 })).toBe('v=30,-12,4.5');
   });
 
   it('launches into exploration and lands back at the same body', () => {
@@ -82,7 +91,7 @@ describe('navigation store', () => {
     nav.goTo('sgr-a-star');
     nav.setInfo(true);
     nav.setWorld(true);
-    expect(navigationStore.getState()).toMatchObject({ world: true, game: null });
+    expect(navigationStore.getState()).toMatchObject({ world: true });
     expect(activeScene().id).toBe('world-galaxy');
     // no going up while flying (the card follows contact, see uiStore.contactHidden)
     nav.goUp();

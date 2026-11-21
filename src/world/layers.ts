@@ -217,6 +217,22 @@ export class SolarLayer implements InnerLayer {
     return 3.75 * this.scaleUnit;
   }
 
+  /**
+   * A spot a few radii out from `id`, on the side facing the Sun and a little above the plane,
+   * looking at it (so Saturn's rings show). Null for an unknown body.
+   */
+  placeNear(id: string): { pos: Vec3d; orient: Quat } | null {
+    const i = SOLAR_BODIES.findIndex((b) => b.id === id);
+    if (i < 0) return null;
+    const s = this.spheres[i];
+    // on the Sun's side, so the body (and Saturn's rings) are lit
+    const outward: Vec3d = length(s.pos) > 1e-9 ? normalize(s.pos) : [0, 0, 1];
+    const toward: Vec3d = id === 'sun' ? outward : scale(outward, -1);
+    const dir = normalize(add(toward, [0, id === 'sun' ? 0.2 : 0.35, 0]));
+    const pos = add(s.pos, scale(dir, s.radius * (id === 'sun' ? 6 : 5)));
+    return { pos, orient: quatLookAt(scale(dir, -1), UP) };
+  }
+
   spawn(from: Vec3d): { pos: Vec3d; orient: Quat } {
     // outside Neptune's orbit, a little above the plane, looking at the Sun
     const dir = normalize(add(normalize(from), [0, 0.12, 0]));

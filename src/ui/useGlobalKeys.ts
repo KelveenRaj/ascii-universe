@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { navigationStore } from '@/state/navigation';
 import { settingsStore } from '@/state/settings';
+import { tourStore } from '@/state/tour';
 import { worldStore } from '@/state/world';
 import { uiStore } from '@/state/ui';
 import { onRenderShortcut } from '@/ui/renderShortcuts';
@@ -42,6 +43,7 @@ export function useGlobalKeys(): void {
         else if (needsCallsign())
           return; // the new pilot dialog takes Esc as LAUNCH itself
         else if (worldStore.getState().hangarOpen) worldStore.setState({ hangarOpen: false });
+        else if (tourStore.getState().tourId) tourStore.getState().exit();
         else if (nav.world) nav.setWorld(false);
         else if (nav.info) nav.setInfo(false);
         return;
@@ -54,9 +56,8 @@ export function useGlobalKeys(): void {
         ui.setHelpOpen(!ui.helpOpen);
       } else if (e.key === 'Backspace' && !inPanel) {
         e.preventDefault();
-        // in a game, Backspace only quits the game; in the open world it lands
-        if (nav.game) nav.setGame(null);
-        else if (nav.world) nav.setWorld(false);
+        // flying, it lands; otherwise it warps back out
+        if (nav.world) nav.setWorld(false);
         else nav.goUp();
       } else if ((e.key === 'i' || e.key === 'I') && !inPanel) {
         if (nav.world) toggleContactCard();

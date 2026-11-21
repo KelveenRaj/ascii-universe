@@ -110,6 +110,8 @@
   .status {
     left: 12px;
     bottom: 12px;
+    /* the tours and share buttons take the right side */
+    max-width: calc(100vw - 24px - 168px);
   }
 
   .topbar {

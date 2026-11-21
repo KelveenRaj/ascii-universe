@@ -39,6 +39,14 @@ const local = new THREE.Vector3();
  * view rays (vertical FOV from tanHalfFov, square cells). Null if the point is behind the camera.
  * Lensing is ignored, which is exact for anything on the line of sight through the hole's centre.
  */
+/** The camera the text layer is drawn through this frame. */
+export interface DrawView {
+  camera: THREE.PerspectiveCamera;
+  tanHalfFov: number;
+  /** Width / height of the view. */
+  aspect: number;
+}
+
 export function projectToGrid(
   position: THREE.Vector3,
   camera: THREE.Camera,

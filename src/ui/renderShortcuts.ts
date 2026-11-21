@@ -23,8 +23,6 @@ export function onRenderShortcut(e: KeyboardEvent): void {
       s.cycleDebugView();
       break;
     case ' ':
-      // in a game, Space is the game's
-      if (navigationStore.getState().game) break;
       e.preventDefault();
       s.togglePaused();
       break;

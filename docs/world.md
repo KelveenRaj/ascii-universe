@@ -5,6 +5,10 @@ Milky Way. You can fly anywhere in the disk and jump to the two places that matt
 Sgr A*, and fly freely inside each. The generated stars are background scenery: they are drawn but
 can't be targeted or entered. This page covers how it fits together, for working on it.
 
+**FLY HERE** on a card (`state/launch.ts`) sets `worldStore.startAt`; `WorldHost.start` then begins inside
+Sol or Sgr A* at that body (`SolarLayer.placeNear`, on the Sun-facing side so Saturn's rings are lit)
+instead of resuming the saved position.
+
 The screen furniture is shared with infographics mode: the minimap (`ui/Minimap.tsx`) follows the
 ship, and a click in the galaxy sends a `warp` request (target and jump); the info card
 (`ui/InfoPanel.tsx`) follows `WorldHud.contact`, the catalog id of the real body you're close to
