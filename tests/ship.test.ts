@@ -7,7 +7,6 @@ import { TEXT_STYLES, TEXT_SWATCHES, TextLayer } from '@/engine/display/TextLaye
 import { MILKY_WAY_MATERIALS } from '@/scenes/milky-way/materials';
 import { blackHoleScene } from '@/scenes/black-hole';
 import { worldGalaxyScene } from '@/scenes/world-galaxy';
-import { worldSystemScene } from '@/scenes/world-system';
 import {
   glowRamp,
   hullRamp,
@@ -114,7 +113,7 @@ describe('ship palette rows', () => {
   });
 
   it('is in every open-world scene, after its own materials, hull first', () => {
-    for (const scene of [worldGalaxyScene, worldSystemScene, blackHoleScene]) {
+    for (const scene of [worldGalaxyScene, blackHoleScene]) {
       const ids = scene.materials.map((m) => m.id);
       expect(ids.slice(-3)).toEqual([SHIP_HULL, SHIP_TRIM, SHIP_GLOW]);
     }

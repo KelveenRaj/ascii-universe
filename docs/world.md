@@ -1,20 +1,25 @@
 # The open world
 
-Free roam (`#/world`, or **FLY > OPEN SPACE** in the navigator) puts you in your own ASCII ship in the
-Milky Way. You can fly anywhere in the disk, jump to stars, drop into their systems and visit
-landmarks like Sol, Vega and Sgr A*. This page covers how it fits together, for working on it.
+Exploration mode (`#/world`, or **FLY** at the top right) puts you in your own ASCII ship in the
+Milky Way. You can fly anywhere in the disk and jump to the two places that matter, Sol and
+Sgr A*, and fly freely inside each. The generated stars are background scenery: they are drawn but
+can't be targeted or entered. This page covers how it fits together, for working on it.
+
+The screen furniture is shared with infographics mode: the minimap (`ui/Minimap.tsx`) follows the
+ship, and a click in the galaxy sends a `warp` request (target and jump); the info card
+(`ui/InfoPanel.tsx`) follows `WorldHud.contact`, the catalog id of the real body you're close to
+(`contact()` in `WorldHost` and each `InnerLayer`). Generated stars have no card.
 
 ## Layers
 
 The galaxy is too big for one coordinate space, so the world is split into **layers**. Each layer
 has its own units and its own scene:
 
-| Layer    | Units                                           | Scene          | Code                                   |
-| -------- | ----------------------------------------------- | -------------- | -------------------------------------- |
-| galaxy   | kly from the core                               | `world-galaxy` | `WorldHost` (open space)               |
-| system   | su (game AU: orbits squeezed, planets fattened) | `world-system` | `SystemLayer` in `src/world/layers.ts` |
-| landmark | r_s around Sgr A*                               | `black-hole`   | `BlackHoleLayer`                       |
-| landmark | au around the Sun (distances log-squeezed)      | `solar-system` | `SolarLayer`                           |
+| Layer    | Units                                      | Scene          | Code                     |
+| -------- | ------------------------------------------ | -------------- | ------------------------ |
+| galaxy   | kly from the core                          | `world-galaxy` | `WorldHost` (open space) |
+| landmark | r_s around Sgr A*                          | `black-hole`   | `BlackHoleLayer`         |
+| landmark | au around the Sun (distances log-squeezed) | `solar-system` | `SolarLayer`             |
 
 Flying inside a layer is continuous. Changing layer sets `worldStore.sceneId`, and the engine plays
 its usual warp to the new scene. The flight itself carries on through the warp.
@@ -36,13 +41,13 @@ Each layer brings its own:
 - occluders (spheres the ship hides behind)
 - HUD rows
 
-Sol is the one real system, so it doesn't use the generated `SystemLayer`. `SolarLayer` reuses the
+`SolarLayer` reuses the
 explore scene (`SolarSystemPass`) and tells it the date and the body you're near through
 `WorldFrame.solar`. Its range runs from Neptune's orbit down to a few thousand km above a surface, so
 it uses three optional layer hooks: `tick` (the layer's own clock, so the planets move), `adapt`
 (speed, chase distance and dust follow your altitude over the nearest body) and `formatSpeed`
 (km/s, then light-speeds). `?date=YYYY-MM-DD` fixes the date, as in explore; the true-distances
-param doesn't apply in flight. Generated systems stay procedural.
+param doesn't apply in flight.
 
 ## Generation
 

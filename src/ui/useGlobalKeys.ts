@@ -6,14 +6,22 @@ import { uiStore } from '@/state/ui';
 import { onRenderShortcut } from '@/ui/renderShortcuts';
 import { needsCallsign } from '@/world/pilot';
 
+/** Flying: shows or hides the card of the body you're in contact with. */
+function toggleContactCard() {
+  const contact = worldStore.getState().hud?.contact;
+  if (!contact) return;
+  const ui = uiStore.getState();
+  ui.setContactHidden(ui.contactHidden === contact ? null : contact);
+}
+
 const isTextField = (t: EventTarget | null) =>
   t instanceof HTMLInputElement && t.type !== 'checkbox' && t.type !== 'range'
     ? true
     : t instanceof HTMLTextAreaElement || (t instanceof HTMLElement && t.isContentEditable);
 
 /**
- * UI-level shortcuts: Tab or ` opens/closes settings, ? help, H the HUD, I the info card, Backspace
- * warps back out (or lands, in the open world), Esc closes overlays.
+ * UI-level shortcuts: Tab or ` opens/closes settings, ? help, H the status line, I the info card,
+ * Backspace warps back out (or lands, when flying), Esc closes overlays (then lands, then hides the card).
  * Inside the settings panel, Tab keeps its normal job of moving focus between controls.
  * Also wires up the render shortcuts (see renderShortcuts.ts).
  */
@@ -34,9 +42,8 @@ export function useGlobalKeys(): void {
         else if (needsCallsign())
           return; // the new pilot dialog takes Esc as LAUNCH itself
         else if (worldStore.getState().hangarOpen) worldStore.setState({ hangarOpen: false });
-        else if (nav.info) nav.setInfo(false);
-        else if (nav.game) nav.setGame(null);
         else if (nav.world) nav.setWorld(false);
+        else if (nav.info) nav.setInfo(false);
         return;
       }
       if (e.repeat) return;
@@ -51,8 +58,9 @@ export function useGlobalKeys(): void {
         if (nav.game) nav.setGame(null);
         else if (nav.world) nav.setWorld(false);
         else nav.goUp();
-      } else if ((e.key === 'i' || e.key === 'I') && !inPanel && !nav.game) {
-        nav.setInfo(!nav.info);
+      } else if ((e.key === 'i' || e.key === 'I') && !inPanel) {
+        if (nav.world) toggleContactCard();
+        else nav.setInfo(!nav.info);
       } else if ((e.key === 'h' || e.key === 'H') && !inPanel) {
         const s = settingsStore.getState();
         s.set('hud', !s.hud);

@@ -21,6 +21,9 @@ export interface Landmark {
   bodyId?: string;
 }
 
+/** Half the width of the galaxy minimap (kly): the Sun's orbit with room to spare. */
+export const MAP_GALAXY_EXTENT = 34;
+
 export const SUN_POS: Vec3d = [0, 0, GALAXY.sunRadius];
 
 const DEG = Math.PI / 180;
@@ -46,54 +49,14 @@ export const LANDMARKS: readonly Landmark[] = [
     material: 0,
     bodyId: 'sgr-a-star',
   },
-  { id: 'sol', name: 'SOL', kind: 'G2 STAR, HOME', pos: SUN_POS, lum: 1, material: 0 },
   {
-    id: 'sirius',
-    name: 'SIRIUS',
-    kind: 'A1 STAR, 8.6 LY',
-    pos: fromSun(227.2, -8.9, 8.6),
-    lum: 25,
-    material: 1,
-  },
-  {
-    id: 'vega',
-    name: 'VEGA',
-    kind: 'A0 STAR, 25 LY',
-    pos: fromSun(67.4, 19.2, 25),
-    lum: 40,
-    material: 1,
-  },
-  {
-    id: 'polaris',
-    name: 'POLARIS',
-    kind: 'F7 SUPERGIANT, 430 LY',
-    pos: fromSun(123.3, 26.5, 430),
-    lum: 1200,
+    id: 'sol',
+    name: 'SOL',
+    kind: 'G2 STAR, HOME',
+    pos: SUN_POS,
+    lum: 1,
     material: 0,
-  },
-  {
-    id: 'betelgeuse',
-    name: 'BETELGEUSE',
-    kind: 'M1 SUPERGIANT, 550 LY',
-    pos: fromSun(199.8, -9.0, 550),
-    lum: 9000,
-    material: 2,
-  },
-  {
-    id: 'rigel',
-    name: 'RIGEL',
-    kind: 'B8 SUPERGIANT, 860 LY',
-    pos: fromSun(209.2, -25.2, 860),
-    lum: 9000,
-    material: 1,
-  },
-  {
-    id: 'deneb',
-    name: 'DENEB',
-    kind: 'A2 SUPERGIANT, 2,600 LY',
-    pos: fromSun(84.3, 2.0, 2600),
-    lum: 20000,
-    material: 1,
+    bodyId: 'solar-system',
   },
 ];
 

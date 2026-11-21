@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { HyperJump } from '@/world/flight/HyperJump';
 import { density } from '@/world/gen/density';
 import { findSystem, SectorCache, sectorOf, sectorSystems, SECTOR } from '@/world/gen/sector';
-import { findLandmark, LANDMARKS, SUN_POS } from '@/world/landmarks';
+import { findLandmark, fromSun, LANDMARKS, SUN_POS } from '@/world/landmarks';
 import { distance, length, quatLookAt, quatNlerp, rotate, sub, type Vec3d } from '@/world/math';
 import { Neighbourhood } from '@/world/Neighbourhood';
 import { apparentBrightness, formatDistance, nearStars } from '@/world/stars';
@@ -113,8 +113,8 @@ describe('landmarks', () => {
   });
 
   it('places stars at their distance from the Sun', () => {
-    expect(distance(findLandmark('sirius')!.pos, SUN_POS) * 1000).toBeCloseTo(8.6, 6);
-    expect(distance(findLandmark('deneb')!.pos, SUN_POS) * 1000).toBeCloseTo(2600, 3);
+    expect(distance(fromSun(227.2, -8.9, 8.6), SUN_POS) * 1000).toBeCloseTo(8.6, 6);
+    expect(distance(fromSun(84.3, 2.0, 2600), SUN_POS) * 1000).toBeCloseTo(2600, 3);
   });
 
   it('points galactic longitude 0 at the centre', () => {
@@ -132,7 +132,7 @@ describe('landmarks', () => {
 });
 
 describe('neighbourhood', () => {
-  it('lists nearby systems nearest first and finds targets by id', () => {
+  it('lists nearby systems nearest first; only real places are targets', () => {
     const hood = new Neighbourhood();
     hood.update(SUN_POS);
     const near = hood.nearestSystems(SUN_POS, 10);
@@ -142,8 +142,10 @@ describe('neighbourhood', () => {
         distance(near[i - 1].pos, SUN_POS),
       );
     }
-    expect(hood.find(near[0].id)).toBe(near[0]);
-    expect(hood.find('vega')?.name).toBe('VEGA');
+    // generated stars are scenery: only the real places can be picked
+    expect(hood.find(near[0].id)).toBeUndefined();
+    expect(hood.find('sol')?.name).toBe('SOL');
+    expect(hood.find('sgr-a-star')?.name).toBe('SGR A*');
   });
 });
 

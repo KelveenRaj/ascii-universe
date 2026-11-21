@@ -1,0 +1,177 @@
+.map {
+  position: absolute;
+  /* under the top bar */
+  top: 72px;
+  right: 16px;
+  width: 176px;
+  padding: 8px;
+  font-size: 8px;
+  line-height: 1;
+  z-index: 3;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 12px;
+  margin-bottom: 6px;
+}
+
+.scope {
+  color: var(--ink-bright);
+  letter-spacing: 1px;
+}
+
+.back {
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.back:hover,
+.back:focus-visible {
+  color: var(--ink-bright);
+}
+
+.svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--ink-dim);
+  touch-action: manipulation;
+}
+
+.arms polyline {
+  fill: none;
+  stroke: var(--ink-dim);
+  stroke-width: 0.8;
+  opacity: 0.8;
+}
+
+.orbit {
+  fill: none;
+  stroke: var(--ink-dim);
+  stroke-width: 0.4;
+  stroke-dasharray: 1 1.5;
+}
+
+.core {
+  fill: var(--accent);
+  opacity: 0.55;
+}
+
+.hole {
+  fill: #000;
+  stroke: var(--accent);
+  stroke-width: 0.8;
+}
+
+.body {
+  outline: none;
+}
+
+.live {
+  cursor: pointer;
+}
+
+.hit {
+  fill: transparent;
+}
+
+.dot {
+  fill: var(--ink);
+}
+
+.on .dot {
+  fill: var(--ink-bright);
+}
+
+.ring {
+  fill: none;
+  stroke: var(--ink-bright);
+  stroke-width: 0.8;
+}
+
+.live:hover .dot,
+.live:focus-visible .dot {
+  fill: var(--ink-bright);
+}
+
+.live:focus-visible .ring {
+  stroke: var(--ink-bright);
+}
+
+/* the ship often sits right on a place (it spawns at Sol): clicks must reach the dot beneath */
+.ship {
+  pointer-events: none;
+}
+
+.ship polygon {
+  fill: var(--ink-bright);
+  stroke: #000;
+  stroke-width: 0.6;
+  filter: drop-shadow(0 0 1.5px var(--glow));
+}
+
+.caption {
+  min-height: 8px;
+  margin-top: 6px;
+  color: var(--accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 640px) {
+  .map {
+    top: 64px;
+    right: 12px;
+    width: 120px;
+    padding: 6px;
+  }
+
+  .scope {
+    letter-spacing: 0;
+    white-space: nowrap;
+  }
+
+  /* no room for both: the way back wins */
+  .head:has(.back) .scope {
+    display: none;
+  }
+
+  .caption {
+    display: none;
+  }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .scope {
+    letter-spacing: 0;
+    white-space: nowrap;
+  }
+
+  .head:has(.back) .scope {
+    display: none;
+  }
+
+  .map {
+    top: 56px;
+    right: 12px;
+    width: 112px;
+    padding: 6px;
+  }
+
+  .caption {
+    display: none;
+  }
+}

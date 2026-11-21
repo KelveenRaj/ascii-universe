@@ -3,7 +3,6 @@ import { blackHoleScene } from '@/scenes/black-hole';
 import { milkyWayScene } from '@/scenes/milky-way';
 import { solarSystemScene } from '@/scenes/solar-system';
 import { worldGalaxyScene } from '@/scenes/world-galaxy';
-import { worldSystemScene } from '@/scenes/world-system';
 
 /**
  * Every place you can visit, keyed by scene id (written out so SceneId is a union the content
@@ -15,7 +14,6 @@ export const SCENES = {
   'black-hole': blackHoleScene,
   'solar-system': solarSystemScene,
   'world-galaxy': worldGalaxyScene,
-  'world-system': worldSystemScene,
 } as const satisfies Record<string, SceneModule>;
 
 export type SceneId = keyof typeof SCENES;

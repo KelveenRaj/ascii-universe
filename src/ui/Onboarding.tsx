@@ -48,8 +48,9 @@ function NewPilot() {
         }}
       >
         <p className={styles.intro}>
-          Your ship is ready. Fly anywhere in the galaxy, jump to the stars, drop into their
-          systems, and find the landmarks. Everything you find is logged under your callsign.
+          Your ship is ready. Fly anywhere in the Milky Way, jump to Sol or Sgr A* from the map, and
+          fly right up to the Sun, the planets and the black hole. Everything you find is logged
+          under your callsign.
         </p>
         <Section title="CALLSIGN">
           <input

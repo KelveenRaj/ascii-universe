@@ -24,8 +24,18 @@ images, with optional CRT effects on top.
 | ------------------------------------------------------------ | ----------------------------------------------------------------- |
 | ![Near face-on view, like the EHT images](docs/eht-view.png) | ![Settings panel with the green palette](docs/settings-green.png) |
 
-Press **I** (or the INFO button) for the info card: what you are looking at, in numbers, with a
-source for every fact. It is part of the URL, so `#/sgr-a-star/info` links straight to it.
+The app has three places: the **Milky Way** (home), **Sagittarius A\*** and the **Solar System**
+(the Sun, the eight planets and the Moon). It has two modes, switched with INFO / FLY at the top right.
+
+### Infographics mode
+
+The default. The Milky Way is the home screen. The **info card** (top left) tells you what you are
+looking at, in numbers, with a source for every fact. It opens as the full card on a wide screen and
+as a short peek on a phone (MORE expands it). **X** or **I** hides it, and it is part of the URL:
+`#/sgr-a-star` shows it, `#/sgr-a-star/clear` hides it.
+
+The **minimap** (top right) is how you travel: click Sgr A\* or Sol in the galaxy map to warp there,
+and inside the Solar System click a planet. `< GALAXY` (or Backspace) goes back out.
 
 ![Info card for Sagittarius A*](docs/info-card.png)
 
@@ -34,46 +44,27 @@ labels included. Things in the scene get a name tag and target brackets (**L** t
 
 ![Copy as text dialog](docs/copy-as-text.png)
 
-### Open space
+### Exploration mode
 
-**FLY > OPEN SPACE** in the navigator (or `#/world`) puts you in your own ASCII ship, free to roam the
-Milky Way:
+**FLY** (or `#/world`) puts you in your own ASCII ship, free to roam the Milky Way:
 
-- Fly anywhere in the disk, or jump to a nearby star and drop into its system.
-- Visit the landmarks: Sol (with all eight planets), Sirius, Vega, Polaris, Betelgeuse, Rigel,
-  Deneb, and Sgr A* itself.
-- Every star you visit goes in your log.
+- Fly anywhere in the disk. The stars you pass are background only.
+- Click Sol or Sgr A* on the minimap (or press **T** to target what you face, then **J**) to jump there.
+- Inside Sol and at Sgr A* you fly freely: up to the Sun, each planet and the black hole.
+- Real bodies show their info card as you come near (the Sun, Earth, Sgr A*…).
+- Every place you reach goes in your log.
 
 In the **HANGAR** you build your ship from hulls, wings and engines, and pick its colour, its name
 and the trail it leaves. Your ship, callsign, log and last position are saved in the browser.
 
 Keys: **W / S** throttle · **arrows** or **drag** steer · **Q / E** roll · **Shift** boost · **X**
-stop · **T** target what you face · **J** jump (or leave a system) · **Esc** land. On touch,
+stop · **T** target what you face · **J** jump (or leave a place) · **Esc** land. On touch,
 drag to steer and use the buttons for the rest. More in [docs/world.md](docs/world.md).
 
 ![Flying past Saturn](docs/open-world.png)
 
-### Slingshot
-
-At Sgr A* there's a minigame: **PLAY > SLINGSHOT** in the navigator (or `#/sgr-a-star/game/slingshot`).
-Aim a ship past the black hole in 3D and bend its path as hard as you dare. It flies a real
-Schwarzschild orbit, so skimming close bends it more and makes its clock fall behind the outside
-world (you see both clocks while it flies). Time slows down on screen during the close pass.
-
-While it flies you ride along behind it (chase view), or switch to a wide view of the whole path,
-or a free camera you orbit yourself. The engine can speed up, slow down and steer, with limited
-fuel; a burn at the closest point does the most. The accretion disk is the hazard: crossing its
-plane through the disk burns the hull, and close in it's fatal, so pick a path that crosses
-outside it or threads the gap inside its inner edge. The aim preview marks disk hits with an X.
-
-Points come from the bend plus the seconds the ship's clock lost, scaled by the hull you have
-left, plus a bonus for unused fuel. Your best score is saved in the browser.
-
-![Slingshot, chase view, mid-burn](docs/slingshot.png)
-
-Keys: **arrows** aim (and steer in flight) · **W / S** speed (burn in flight) · **Space** launch ·
-**F** change view · drag to look around while aiming · **Esc** quit. On touch there are buttons
-for all of them.
+> Earlier versions had more targets (Sirius, Vega…, generated star systems) and a Slingshot
+> minigame. They are archived under the git tag `archive/pre-refine`.
 
 ## Running it
 
@@ -111,7 +102,7 @@ Other scripts:
 More keys: **1 2 3** view presets (per place: overview, face-on, edge-on at the galaxy; edge-on, EHT, top-down at
 the black hole) · **I** info card · **Backspace** warp back out · **Space** pause · **C** copy as
 text · **[ ]** glyph size · **R** character set · **P** palette · **B** bloom · **T** CRT · **L** labels · **G** ASCII
-on/off · **V** debug views · **Tab** settings · **H** HUD · **?** help.
+on/off · **V** debug views · **Tab** settings · **H** status line · **?** help.
 
 After 30 seconds without input the camera slowly orbits on its own (attract mode). You can turn that
 off in settings.

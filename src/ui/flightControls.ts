@@ -12,14 +12,14 @@ export const FLIGHT_GROUPS: Group[] = [
       ['X', 'STOP'],
       ['T', 'TARGET WHAT YOU FACE'],
       ['J', 'JUMP TO TARGET / LEAVE'],
-      ['ESC', 'LAND'],
+      ['ESC', 'LAND (BACK TO INFO)'],
     ],
   },
   {
     title: 'MOUSE / TOUCH',
     rows: [
       ['DRAG', 'STEER'],
-      ['TARGETS LIST', 'PICK A TARGET'],
+      ['MINIMAP', 'CLICK SOL / SGR A* TO JUMP'],
       ['THR + / THR -', 'THROTTLE'],
       ['BST / STOP', 'BOOST / STOP'],
       ['TGT', 'TARGET WHAT YOU FACE'],

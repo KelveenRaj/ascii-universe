@@ -5,14 +5,14 @@ import { getScene } from '@/scenes/registry';
 import { worldStore } from '@/state/world';
 
 /**
- * Where you are: which body, whether its info card is open, which minigame (if any) you're
- * playing there, and whether you're out flying in the open world. Mirrored in the URL hash so a
- * link opens the same view:
+ * Where you are, in one of two modes. Infographics mode: which body you're looking at, with its
+ * info card open (the default) or hidden. Exploration mode (`world`): flying your own ship, where
+ * the card follows whatever real body you're in contact with. Mirrored in the URL hash so a link
+ * opens the same view:
  *
- *   #/sgr-a-star                  exploring Sagittarius A*
- *   #/sgr-a-star/info             …with its info card open
- *   #/sgr-a-star/game/slingshot   …playing Slingshot
- *   #/world                       free-roaming the open world in your ship
+ *   #/sgr-a-star          infographics: Sagittarius A*, card open
+ *   #/sgr-a-star/clear    …card hidden
+ *   #/world               exploration: flying the ship
  *
  * The scene on screen follows from the body (body.sceneId), or in the open world from the layer
  * you're flying in. Moving to another scene is done by the Engine, which watches this store and
@@ -21,7 +21,7 @@ import { worldStore } from '@/state/world';
 export interface Route {
   bodyId: string;
   info: boolean;
-  /** Id of the minigame being played here, or null. The card and a game never show together. */
+  /** Id of the minigame being played here, or null (no minigames for now). */
   game: string | null;
   /**
    * Flying in the open world. The body is kept, so landing drops you back where you were; no card
@@ -41,7 +41,7 @@ export interface NavigationState extends Route {
   setWorld: (on: boolean) => void;
 }
 
-const home = (): Route => ({ bodyId: DEFAULT_BODY_ID, info: false, game: null, world: false });
+const home = (): Route => ({ bodyId: DEFAULT_BODY_ID, info: true, game: null, world: false });
 
 /**
  * Hash → route. Anything unknown or malformed lands on the default body, card closed. Body and
@@ -56,13 +56,13 @@ export function parseHash(hash: string): Route {
   if (game && game.bodyId === body.id) {
     return { bodyId: body.id, info: false, game: game.id, world: false };
   }
-  return { bodyId: body.id, info: parts[1] === 'info', game: null, world: false };
+  return { bodyId: body.id, info: parts[1] !== 'clear', game: null, world: false };
 }
 
 export function formatHash(route: Route): string {
   if (route.world) return '#/world';
   if (route.game) return `#/${route.bodyId}/game/${route.game}`;
-  return `#/${route.bodyId}${route.info ? '/info' : ''}`;
+  return `#/${route.bodyId}${route.info ? '' : '/clear'}`;
 }
 
 const initialRoute = (): Route =>
@@ -72,6 +72,7 @@ export const navigationStore = createStore<NavigationState>()((set, get) => ({
   ...initialRoute(),
   setInfo: (info) => {
     if (!get().world) set(info ? { info, game: null } : { info });
+    // in flight the card follows contact; the UI keeps its own dismissal (uiStore.contactHidden)
   },
   setGame: (gameId) => {
     if (gameId === null) set({ game: null });
@@ -80,14 +81,14 @@ export const navigationStore = createStore<NavigationState>()((set, get) => ({
     }
   },
   goTo: (bodyId) => {
-    if (findBody(bodyId)) set({ bodyId, info: false, game: null, world: false });
+    if (findBody(bodyId)) set({ bodyId, game: null, world: false });
   },
   goUp: () => {
     if (get().world) return;
     const parent = getBody(get().bodyId).parent;
     if (parent) get().goTo(parent);
   },
-  setWorld: (on) => set(on ? { world: true, info: false, game: null } : { world: false }),
+  setWorld: (on) => set(on ? { world: true, game: null } : { world: false }),
 }));
 
 export const activeBody = () => getBody(navigationStore.getState().bodyId);
